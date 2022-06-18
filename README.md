@@ -34,7 +34,7 @@ sample/
 ├─ index.html
 ```
 
-The `assets` directory is where Moroxel8AI loads assets from. Here is `tilemap.png`, this is a 16x16 pixels tilemap taken from Mario on NES:
+The `assets` directory is where Moroxel8AI will load assets from. Here is `tilemap.png`, this is a 16x16 pixels tilemap taken from Mario on NES:
 
 ![Preview](https://github.com/moroboxai/moroxel8ai/raw/media/tilemap.png)
 
