@@ -34,21 +34,23 @@ sample/
 ├─ index.html
 ```
 
-The `header.json` contains some metadata about the game and how to run it:
+The `assets` directory is where Moroxel8AI loads assets from. Here is `tilemap.png`, this is a 16x16 pixels tilemap taken from Mario on NES:
+
+![Preview](https://github.com/moroboxai/moroxel8ai/raw/media/tilemap.png)
+
+The `header.json` contains some metadata about assets and how to run the game:
 
 ```json
-
-```js
 {
-  "assets": [
-    {"id": "tilemap", "path": "tilemap.png", "mode": "16x16"}
-  ],
-  "boot": "Moroxel8AI",
-  "main": "game.lua"
+    "assets": [
+        {"id": "tilemap", "path": "tilemap.png", "mode": "16x16"}
+    ],
+    "boot": "Moroxel8AI",
+    "main": "game.lua"
 }
 ```
 
-The `game.lua` script is where the game logic is written:
+All the game logic is written in `game.lua`:
 
 ```lua
 WIDTH = 256;
@@ -69,7 +71,53 @@ function tick(deltaTime)
 end
 ```
 
-## Test on the web
+Now, all remain is `index.html` which is simply loading MoroboxAI + Moroxel8AI and initializing the game:
+
+```html
+<html>
+    <head>
+        <title>moroxel8ai</title>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/moroboxai-player-web@0.1.0-alpha.10/lib/umd/moroboxai-player-web.min.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/moroxel8ai@0.1.0-alpha.1/lib/umd/moroxel8ai.min.js"></script>
+    </head>
+    <body>
+        <div id="player"></div>
+    </body>
+    <script type="text/javascript">
+        (function() {
+            console.log(`moroboxai-player-web v${MoroboxAIPlayer.VERSION}`);
+            
+            player = MoroboxAIPlayer.init(document.getElementById("player"), {
+                url: `./`,
+                resizable: false,
+                autoPlay: true,
+                onReady: () => console.log("ready")
+            });
+        })();
+    </script>
+
+    <style type="text/css">
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #player {
+            background-color: black;
+            background-size: cover;
+            width: 256px;
+            height: 256px;
+        }
+    </style>
+</html>
+```
+
+## Run on the web
 
 Testing on the web requires you to run a local HTTP server to avoid CORS errors when loading local files.
 
