@@ -1,6 +1,5 @@
 import * as MoroboxAIGameSDK from 'moroboxai-game-sdk';
 import * as Moroxel8AISDK from 'moroxel8ai-sdk';
-import { resolve } from 'path';
 import * as PIXI from 'pixi.js';
 
 import {
