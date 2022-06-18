@@ -19,7 +19,7 @@ Moroxel8AI is a layer of abstraction on top of that and:
   * Takes care of loading all your assets
   * Provides a simple interface for controlling the graphics, audio, and inputs
 
-To sum up, Moroxel8AI takes care of all the boilerplate required for initializing and running your game in MoroboxAI, and let you simply write your game logic in Lua.
+To sum up, Moroxel8AI takes care of all the boilerplate required for initializing and running your game in MoroboxAI, and lets you focus on coding the game logic in Lua.
 
 ## License
 
