@@ -8,22 +8,18 @@
 
 Fantasy 8-bit CPU for [MoroboxAI](https://github.com/moroboxai).
 
-## Install
+## Why
 
-Using npm:
+MoroboxAI by itself is a generic framework that can run any JavaScript code that exports a **boot** function.
 
-```bash
-npm install moroxel8ai --save
-```
+Moroxel8AI is a layer of abstraction on top of that and:
+  * Uses [PixiJS](https://pixijs.com/) as a renderer
+  * Uses [fengari](https://github.com/fengari-lua/fengari) for running your game written in Lua
+  * Implements all the boilerplate for being compatible with MoroboxAI
+  * Takes care of loading all your assets
+  * Provides a simple interface for controlling the graphics, audio, and inputs
 
-Or:
-
-```bash
-git clone https://github.com/moroboxai/moroxel8ai.git
-cd moroxel8ai
-npm i
-npm run build
-```
+To sum up, Moroxel8AI takes care of all the boilerplate required for initializing and running your game in MoroboxAI, and let you simply write your game logic in Lua.
 
 ## License
 
