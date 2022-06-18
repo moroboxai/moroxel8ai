@@ -1,21 +1,16 @@
 WIDTH = 256;
 HEIGHT = 256;
 
+-- select tilemap.png as the tilemap
+tmap('tilemap');
+-- assign the tile 0 to sprite 0
+stile(0, 6);
+-- origin of sprite 0 is the center
+sorigin(0, 8, 8);
+-- center sprite 0 on screen
+spos(0, WIDTH / 2, HEIGHT / 2);
+
 function tick(deltaTime)
-    tmap('tilemap');
-
-    for i = 0, 16, 1
-    do
-        stile(i, 0);
-        spos(i, i * 16, HEIGHT - 16);
-    end
-
-    stile(16, 2);
-    spos(16, 3 * 16, HEIGHT - 48);
-    stile(17, 3);
-    spos(17, 4 * 16, HEIGHT - 48);
-    stile(18, 4);
-    spos(18, 3 * 16, HEIGHT - 32);
-    stile(19, 5);
-    spos(19, 4 * 16, HEIGHT - 32);
+    -- rotate sprite 0
+    srot(0, srot(0) + deltaTime)
 end

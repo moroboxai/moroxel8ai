@@ -271,6 +271,42 @@ function initLua(script: string | undefined, vm: Moroxel8AISDK.IMoroxel8AI): lua
         return 0;
     });
 
+    lua.lua_register(luaState, 'sorigin', (_: lua_State) => {
+        const size = lua.lua_gettop(luaState);
+        if (size === 1) {
+            return 0;
+        }
+
+        if (size !== 3) {
+            return lauxlib.luaL_error(to_luastring("sorigin(id, [x, y])"));
+        }
+        
+        vm.sorigin(
+            lua.lua_tonumber(luaState, 1),
+            lua.lua_tonumber(luaState, 2),
+            lua.lua_tonumber(luaState, 3),
+        );
+        return 0;
+    });
+
+    lua.lua_register(luaState, 'srot', (_: lua_State) => {
+        const size = lua.lua_gettop(luaState);
+        if (size === 1) {
+            lua.lua_pushnumber(luaState, vm.srot(lua.lua_tonumber(luaState, 1)));
+            return 1;
+        }
+
+        if (size !== 2) {
+            return lauxlib.luaL_error(to_luastring("srot(id, [a])"));
+        }
+        
+        vm.srot(
+            lua.lua_tonumber(luaState, 1),
+            lua.lua_tonumber(luaState, 2),
+        );
+        return 0;
+    });
+
     if (script !== undefined) {
         if (lauxlib.luaL_dostring(luaState, to_luastring(script)) != lua.LUA_OK) {
             console.error(to_jsstring(lua.lua_tostring(luaState, -1)));
@@ -481,6 +517,16 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
         this._sprites[id].texture = this._tilemap!.getTile(tile);
     }
 
+    sorigin(id: number): { x: number; y: number; };
+    sorigin(id: number, x: number, y: number): void;
+    sorigin(id: number, x?: number, y?: number): void | { x: number; y: number; } {
+        if (x === undefined || y === undefined) {
+            return this._sprites[id].pivot;
+        }
+
+        this._sprites[id].pivot.set(x, y);
+    }
+
     spos(id: number): { x: number; y: number; };
     spos(id: number, x: number, y: number): void;
     spos(id: number, x?: number, y?: number): void | { x: number; y: number; } {
@@ -511,8 +557,12 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
 
     srot(id: number): number;
     srot(id: number, a: number): void;
-    srot(id: unknown, a?: unknown): number | void {
-        throw new Error('Method not implemented.');
+    srot(id: number, a?: number): number | void {
+        if (a === undefined) {
+            return this._sprites[id].angle;
+        }
+
+        this._sprites[id].angle = a;
     }
 }
 
