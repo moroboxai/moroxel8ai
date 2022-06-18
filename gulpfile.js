@@ -10,6 +10,8 @@ const webpackConfig = (lib, output, options, library, prod) => ({
     context: path.resolve(__dirname, 'src'),
     entry: './index.ts',
     mode: prod ? 'production' : 'development',
+    target: 'web',
+    node: false,
     module: {
         rules: [{
             test: /\.tsx?$/,
@@ -25,6 +27,12 @@ const webpackConfig = (lib, output, options, library, prod) => ({
     resolve: {
         extensions: ['.ts', '.js']
     },
+    plugins: [
+        new webpack.DefinePlugin({
+            "process.env.FENGARICONF": "void 0",
+            "typeof process": JSON.stringify("undefined")
+        })
+    ],
     ...options
 });
 

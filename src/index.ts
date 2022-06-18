@@ -3,6 +3,14 @@ import * as Moroxel8AISDK from 'moroxel8ai-sdk';
 import { resolve } from 'path';
 import * as PIXI from 'pixi.js';
 
+import {
+    lua_State,
+    lua,
+	lauxlib,
+    to_luastring,
+    to_jsstring
+} from 'fengari';
+
 const SCREEN_WIDTH = 256;
 const SCREEN_HEIGHT = 256;
 const PHYSICS_TIMESTEP = 0.01;
@@ -114,44 +122,18 @@ class TileMap {
 }
 
 /**
- * Load the boot function and initialize the game.
+ * Load the main script indicated in game header.
  * @param {ExtendedGameHeader} header - game header
  * @param {MoroboxAIGameSDK.IGameServer} gameServer - game server for accessing files
- * @returns {Promise} - a promise
+ * @returns {Promise} - content of the main script
  */
-function loadGame(header: ExtendedGameHeader, gameServer: MoroboxAIGameSDK.IGameServer): Promise<Moroxel8AISDK.IBoot> {
-    if (header.main === undefined) {
-        return new Promise((resolve, reject) => reject('main not specified'));
-    }
-
-    function getBootFunction(data: string): Moroxel8AISDK.IBoot | undefined {
-        let _exports: any = {};
-        let _module = { exports: { boot: undefined } };
-        const result = (new Function('exports', 'module', 'define', data))(_exports, _module, undefined);
-        if (_exports.boot !== undefined) {
-            return _exports.boot;
+function loadMain(header: ExtendedGameHeader, gameServer: MoroboxAIGameSDK.IGameServer): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+        if (header.main === undefined) {
+            return reject('header is missing a main attribute with the path to your main script');
         }
 
-        if (_module.exports.boot !== undefined) {
-            return _module.exports.boot;
-        }
-
-        if (result === 'object' && result.boot !== undefined) {
-            return result.boot;
-        }
-
-        return undefined;
-    }
-
-    console.log('loading game...');
-    return gameServer.get(header.main).then(data => {
-        const boot = getBootFunction(data);
-
-        if (boot === undefined) {
-            return Promise.reject('missing boot function');
-        }
-
-        return Promise.resolve(boot);
+        return gameServer.get(header.main).then(resolve);
     });
 }
 
@@ -160,7 +142,7 @@ function loadGame(header: ExtendedGameHeader, gameServer: MoroboxAIGameSDK.IGame
  * @param {AssetHeader[]} assets - list of assets to load
  * @param {MoroboxAIGameSDK.IGameServer} gameServer - game server for accessing files
  * @param {function} assetLoaded - function called for each loaded asset
- * @return {Promise} - a promise
+ * @returns {Promise} - a promise
  */
 function loadAssets(assets: AssetHeader[] | undefined, gameServer: MoroboxAIGameSDK.IGameServer, assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void): Promise<void> {
     return new Promise((resolve) => {
@@ -209,39 +191,110 @@ function loadAssets(assets: AssetHeader[] | undefined, gameServer: MoroboxAIGame
  * @param {MoroboxAIGameSDK.IPlayer} player - player instance 
  * @param {Moroxel8SDK.IMoroxel8AI} vm - Moroxel8 instance
  * @param {Function} assetLoaded - function called for each loaded asset
- * @return {Promise} - a promise
+ * @returns {Promise} - content of the main script
  */
-function initGame(player: MoroboxAIGameSDK.IPlayer, vm: Moroxel8AISDK.IMoroxel8AI, assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void): Promise<Moroxel8AISDK.IGame> {
-    return new Promise<Moroxel8AISDK.IGame>((resolve) => {
+function initGame(player: MoroboxAIGameSDK.IPlayer, vm: Moroxel8AISDK.IMoroxel8AI, assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void): Promise<string> {
+    return new Promise<string>((resolve) => {
         const header = player.header as ExtendedGameHeader;
 
-        return loadGame(
+        return loadMain(
             header,
             player.gameServer
-        ).then((boot: Moroxel8AISDK.IBoot) => {
+        ).then((data) => {
             return loadAssets(
                 header.assets,
                 player.gameServer,
                 assetLoaded
-            ).then(() => {
-                const game = boot(vm);
-                console.log(game);
-
-                resolve(game);
-            });
+            ).then(() => resolve(data));
         });
     });
 }
 
+/**
+ * Initialize a new Lua VM for running a script.
+ * @param {string} script - script to inject
+ * @param {Moroxel8AISDK.IMoroxel8AI} vm - interface for the CPU
+ * @returns {lua_State} - new Lua VM
+ */
+function initLua(script: string | undefined, vm: Moroxel8AISDK.IMoroxel8AI): lua_State | undefined {
+    const luaState: lua_State = lauxlib.luaL_newstate();
+    lua.lua_register(luaState, 'print', (_: lua_State) => {
+        console.log(lua.lua_tojsstring(_, -1));
+        return 0;
+    });
+
+    lua.lua_register(luaState, 'tmap', (_: lua_State) => {
+        const size = lua.lua_gettop(luaState);
+        if (size === 0) {
+            return 0;
+        }
+
+        if (size !== 1) {
+            return lauxlib.luaL_error(to_luastring("tmap([id])"));
+        }
+        
+        vm.tmap(lua.lua_tojsstring(_, -1));
+        return 0;
+    });
+
+    lua.lua_register(luaState, 'stile', (_: lua_State) => {
+        const size = lua.lua_gettop(luaState);
+        if (size === 1) {
+            return 0;
+        }
+
+        if (size !== 2) {
+            return lauxlib.luaL_error(to_luastring("stile(id, [tile])"));
+        }
+        
+        vm.stile(
+            lua.lua_tonumber(luaState, 1),
+            lua.lua_tonumber(luaState, 2),
+        );
+        return 0;
+    });
+
+    lua.lua_register(luaState, 'spos', (_: lua_State) => {
+        const size = lua.lua_gettop(luaState);
+        if (size === 1) {
+            return 0;
+        }
+
+        if (size !== 3) {
+            return lauxlib.luaL_error(to_luastring("spos(id, [x, y])"));
+        }
+        
+        vm.spos(
+            lua.lua_tonumber(luaState, 1),
+            lua.lua_tonumber(luaState, 2),
+            lua.lua_tonumber(luaState, 3),
+        );
+        return 0;
+    });
+
+    if (script !== undefined) {
+        if (lauxlib.luaL_dostring(luaState, to_luastring(script)) != lua.LUA_OK) {
+            console.error(to_jsstring(lua.lua_tostring(luaState, -1)));
+            return undefined;
+        }
+    }
+
+    return luaState;
+}
+
 class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     private _player: MoroboxAIGameSDK.IPlayer;
-    private _game?: Moroxel8AISDK.IGame;
+    // Main Lua script of the game
+    private _gameScript?: string;
+    // Lua VM
+    private _luaState?: lua_State;
 
     private _app?: PIXI.Application;
     // Buffer where the game will be rendered
     private _gameBuffer?: BackBuffer;
     // If the game has been attached and is playing
     private _isPlaying: boolean = false;
+    private _displayedTickError: boolean = false;
     private _physicsAccumulator: number = 0;
     private _tilemaps: { [key: string]: TileMap } = {};
     private _tilemap?: TileMap;
@@ -250,9 +303,13 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     constructor(player: MoroboxAIGameSDK.IPlayer) {
         this._player = player;
 
-        initGame(player, this, (asset, res) => this._handleAssetLoaded(asset, res)).then((game) => {
-            this._game = game;
+        // init the game and load assets
+        initGame(player, this, (asset, res) => this._handleAssetLoaded(asset, res)).then((data) => {
+            // received the game script
+            this._gameScript = data;
             this._initPixiJS();
+
+            // calling ready will call play
             player.ready();
         });
     }
@@ -298,11 +355,21 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
 
     // Physics loop
     private _update(deltaTime: number) {
-        if (this._game === undefined) return;
+        if (this._luaState === undefined) return;
+
         try {
-            this._game.tick(deltaTime);
+            lua.lua_getglobal(this._luaState, to_luastring("tick", true));
+            lua.lua_pushnumber(this._luaState, deltaTime);
+            if (lua.lua_call(this._luaState, 1, 0) !== lua.LUA_OK && !this._displayedTickError) {
+                this._displayedTickError = true;
+                console.error(to_jsstring(lua.lua_tostring(this._luaState, -1)));
+                return;
+            }
         } catch(e) {
-            console.error(e);
+            if(!this._displayedTickError) {
+                this._displayedTickError = true;
+                console.error(e);
+            }
         }
     }
 
@@ -335,6 +402,13 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
         }
 
         this._isPlaying = true;
+        this._displayedTickError = false;
+
+        this._luaState = initLua(this._gameScript, this);
+        if (this._luaState === undefined) {
+            console.error('failed to create the Lua VM, see errors in console');
+            return;
+        }
 
         this.resize();
 
