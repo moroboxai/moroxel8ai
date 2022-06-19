@@ -326,6 +326,16 @@ function initLua(script: string | undefined, vm: Moroxel8AISDK.IMoroxel8AI): lua
     setnameval('BUP', vm.BUP);
     setnameval('BDOWN', vm.BDOWN);
 
+    lua.lua_register(luaState, 'btn', (_: lua_State) => {
+        const size = lua.lua_gettop(luaState);
+        if (size !== 1) {
+            return lauxlib.luaL_error(to_luastring("btn(id)"));
+        }
+
+        lua.lua_pushboolean(luaState, vm.btn(lua.lua_tonumber(luaState, -1)));
+        return 1;
+    });
+
     lua.lua_register(luaState, 'print', (_: lua_State) => {
         console.log(lua.lua_tojsstring(_, -1));
         return 0;

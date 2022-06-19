@@ -11,6 +11,8 @@ spos(0, SWIDTH / 2, SHEIGHT / 2);
 function tick(deltaTime)
     -- rotate sprite 0
     srot(0, srot(0) + deltaTime)
-    x, y = sscale(0)
-    sscale(0, x + deltaTime / 10, y + deltaTime / 10)
+    if (btn(BLEFT)) then
+        x, y = sscale(0)
+        sscale(0, x + deltaTime / 10, y + deltaTime / 10)
+    end
 end
