@@ -131,7 +131,7 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     // VM
     private _vm?: IVM;
 
-    private _app?: PIXI.Application;
+    private _app: PIXI.Application;
     private _ticker = (delta: number) => this._tick(delta);
     // If the game has been attached and is playing
     private _isPlaying: boolean = false;
@@ -142,7 +142,17 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     constructor(player: MoroboxAIGameSDK.IPlayer) {
         this._player = player;
         PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
-        this._ppu = new PPU();
+
+        this._app = new PIXI.Application({
+            backgroundColor: 0x0,
+            resolution: window.devicePixelRatio || 1,
+            width: this._player.width,
+            height: this._player.height,
+            antialias: false
+        });
+
+        this._ppu = new PPU(this._app.renderer);
+        this._app.stage.addChild(this._ppu.sprite);
 
         // init the game and load assets
         initGame(player, (asset, res) => this._handleAssetLoaded(asset, res)).then((data) => {
@@ -165,18 +175,8 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
      * Initialize the PixiJS application.
      */
     _initPixiJS() {
-        this._app = new PIXI.Application({
-            backgroundColor: 0x0,
-            resolution: window.devicePixelRatio || 1,
-            width: this._player.width,
-            height: this._player.height,
-            antialias: false
-        });
-
         // attach PIXI view to root HTML element
         this._player.root.appendChild(this._app.view);
-
-        this._app.stage.addChild(this._ppu.sprite);
     }
 
     // Physics loop
@@ -244,15 +244,10 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 
     stop(): void {
-        if (this._app !== undefined) {
-            this._app.destroy(true, {children: true, texture: true, baseTexture: true});
-            this._app = undefined;
-        }
+        this._app.destroy(true, {children: true, texture: true, baseTexture: true});
     }
 
     resize(): void {
-        if (this._app === undefined) return;
-
         // Scale the game view according to parent div
         const realWidth = this._player.width;
         const realHeight = this._player.height;
@@ -266,16 +261,25 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     get SHEIGHT(): number { return this._ppu.SHEIGHT; }
     get TNUM(): number { return this._ppu.TNUM; }
     get SNUM(): number { return this._ppu.SNUM; }
+    P1: number = 0;
+    P2: number = 1;
     BLEFT: number = 0;
     BRIGHT: number = 1;
     BUP: number = 2;
     BDOWN: number = 3;
 
-    btn(id: number): boolean {
-        const controller = this._player.controller(0);
+    btn(bid: number): boolean;
+    btn(pid: number, bid: number): boolean;
+    btn(pid: number, bid?: number): boolean {
+        if (bid === undefined) {
+            bid = pid;
+            pid = this.P1;
+        }
+
+        const controller = this._player.controller(pid);
         if (controller === undefined) return false;
 
-        switch (id) {
+        switch (bid) {
             case this.BLEFT:
                 return controller.inputs().left === true;
             case this.BRIGHT:

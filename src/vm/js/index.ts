@@ -26,6 +26,8 @@ export function initJS(script: string | undefined, api: Moroxel8AISDK.IMoroxel8A
     const builtins: any = {
         SWIDTH: api.SWIDTH,
         SHEIGHT: api.SHEIGHT,
+        P1: api.P1,
+        P2: api.P2,
         BLEFT: api.BLEFT,
         BRIGHT: api.BRIGHT,
         BUP: api.BUP,

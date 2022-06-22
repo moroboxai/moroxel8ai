@@ -1,17 +1,14 @@
 import * as PIXI from 'pixi.js';
+import { TileMapHeader } from './header';
+import { TileMap } from './tilemap';
+import { PaletteColorFilter, Palette, palettize } from './palette';
+import { RetroColorFilter } from './retrocolor';
+export * from './header';
 export const SCREEN_WIDTH = 128;
 export const SCREEN_HEIGHT = 128;
 export const TILEMAP_RESOLUTION = 8;
 export const NUM_SPRITES = 256;
-
-export interface AssetHeader {
-    id?: string;
-    path?: string;
-}
-
-export interface TileMapHeader extends AssetHeader {
-    mode?: "8x8" | "16x16" | "32x32"
-}
+export const NUM_COLORS = 64;
 
 function clamp(v: number, a: number, b: number): number {
     return Math.max(Math.min(v, b), a);
@@ -22,74 +19,6 @@ function numberToColor(v: number): { r: number, g: number, b: number } {
         r: (((v >> 5) & 0x7) * 256) / 7,
         g: (((v >> 2) & 0x7) * 256) / 7,
         b: ((v & 0x3) * 256) / 7
-    }
-}
-
-class TileMap {
-    private _asset: AssetHeader;
-    private _texture: PIXI.Texture;
-    private _cellSize: number = 8;
-    private _columns: number;
-    private _rows: number;
-
-    constructor(asset: AssetHeader, texture: PIXI.Texture, cellSize: number) {
-        this._asset = asset;
-        this._texture = texture;
-        //this._cellSize = cellSize;
-        this._columns = Math.ceil(this._texture.width / this._cellSize);
-        this._rows = Math.ceil(this._texture.height / this._cellSize);
-    }
-
-    get id(): string {
-        return this._asset.id!;
-    }
-
-    get columns(): number {
-        return this._columns;
-    }
-
-    get rows(): number {
-        return this._rows;
-    }
-
-    crop(x: number, y: number, w: number, h: number): PIXI.Texture {        
-        return new PIXI.Texture(this._texture.baseTexture, new PIXI.Rectangle(x, y, w, h));
-    }
-
-    getTile(i: number, j: number, w?: number, h?: number): PIXI.Texture {
-        if (i < 0 || i >= this._columns || j < 0 || j >= this._rows) return PIXI.Texture.EMPTY;
-
-        const x1 = Math.ceil(i) * this._cellSize;
-        const y1 = Math.ceil(j) * this._cellSize;
-        const x2 = Math.min(Math.max(x1 + Math.ceil((w === undefined ? 1 : w) * this._cellSize), 0), this._texture.width);
-        const y2 = Math.min(Math.max(y1 + Math.ceil((h === undefined ? 1 : h) * this._cellSize), 0), this._texture.height);
-        
-        return new PIXI.Texture(this._texture.baseTexture, new PIXI.Rectangle(x1, y1, x2 - x1, y2 - y1));
-    }
-
-    static from(asset: TileMapHeader, texture: PIXI.Texture): TileMap | undefined {
-        if (asset.mode === undefined) {
-            console.error('mode not set on tilemap');
-            return undefined;
-        }
-
-        let cellSize = undefined;
-        switch (asset.mode) {
-            case '8x8':
-                cellSize = 8;
-                break;
-            case '16x16':
-                cellSize = 16;
-                break;
-            case '32x32':
-                cellSize = 32;
-                break;
-            default:
-                console.error('unknown mode for tilemap');
-                return undefined;
-        }
-
-        return new TileMap(asset, texture, cellSize);
     }
 }
 
@@ -293,17 +222,23 @@ export class PPU extends BackBuffer {
     SNUM: number = NUM_SPRITES;
 
     // Buffer where the game will be rendered
+    private _renderer: PIXI.Renderer;
     private _tilemaps: { [key: string]: TileMap } = {};
     private _tilemap?: TileMap;
     private _sprites!: OAMSprite[];
     private _map: OAMMap;
+    private _palette: Palette = new Palette(NUM_COLORS);
+    private _paletteFilter: PaletteColorFilter;
 
-    constructor() {
+    constructor(renderer: PIXI.Renderer) {
         super(SCREEN_WIDTH, SCREEN_HEIGHT);
+        this._renderer = renderer;
         this.sprite.position.set(0, 0);
 
         this._map = new OAMMap();
         this.container.addChild(this._map);
+        this._paletteFilter = new PaletteColorFilter(this._palette);
+        this.container.filters = [this._paletteFilter];
 
         this._sprites = new Array<OAMSprite>();
         for (let i = 0; i < NUM_SPRITES; ++i) {
@@ -314,7 +249,11 @@ export class PPU extends BackBuffer {
     }
 
     addTileMap(asset: TileMapHeader, texture: PIXI.Texture): void {
-        const tilemap = TileMap.from(asset, texture);
+        const tex = palettize(this._renderer, this._palette, texture);
+        this._palette.update();
+        console.log(`indexed ${asset.path} with ${tex.numColors} colors`);
+        this._paletteFilter.setPalette(this._palette);
+        const tilemap = TileMap.from(asset, tex);
         if (tilemap !== undefined) {
             this._tilemaps[tilemap.id] = tilemap;
         }

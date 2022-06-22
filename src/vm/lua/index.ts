@@ -117,6 +117,8 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
     setnameval('SHEIGHT', api.SHEIGHT);
     setnameval('TNUM', api.TNUM);
     setnameval('SNUM', api.SNUM);
+    setnameval('P1', api.P1);
+    setnameval('P2', api.P2);
     setnameval('BLEFT', api.BLEFT);
     setnameval('BRIGHT', api.BRIGHT);
     setnameval('BUP', api.BUP);
@@ -127,10 +129,18 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
             console.log(lua.lua_tojsstring(_, -1));
             return 0;
         },
-        btn: func(luaState, "btn(id)", 1, () => {
-            pushboolean(luaState, api.btn(getnumber(luaState, 1)));
-            return 1;
-        }),
+        btn: func(luaState, "btn([pid], bid)",
+            (n: number) => n === 1 || n === 2,
+            () => {
+                const size = nargs(luaState);
+
+                pushboolean(luaState, api.btn(
+                    size > 1 ? getnumber(luaState, 1) : api.P1,
+                    getnumber(luaState, -1),
+                ));
+                return 1;
+            }
+        ),
         // TILEMAP API
         tmap: func(luaState, "tmap(id)", 1,
             () => {
