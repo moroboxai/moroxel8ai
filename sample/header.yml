@@ -3,4 +3,4 @@ assets:
       path: tilemap.png
       mode: 16x16
 boot: Moroxel8AI
-main: game.js
+main: game.lua

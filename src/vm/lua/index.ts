@@ -19,7 +19,10 @@ class LuaVM implements IVM {
         lua.lua_getglobal(this._luaState, to_luastring("tick", true));
         pushnumber(this._luaState, deltaTime);
         if (lua.lua_call(this._luaState, 1, 0) !== lua.LUA_OK) {
-            throw new Error(to_jsstring(lua.lua_tostring(this._luaState, -1)));
+            const err = getstring(this._luaState, -1);
+            if (err) {
+                throw new Error(err);
+            }
         }
     }
 }
@@ -48,6 +51,10 @@ function getstring(L: lua_State, i: number): string {
     return lua.lua_tojsstring(L, i);
 }
 
+function getobject(L: lua_State, i: number): any {
+    return lua.lua_touserdata(L, i);
+}
+
 function nargs(L: lua_State): number {
     return lua.lua_gettop(L);
 }
@@ -74,12 +81,12 @@ function getset(L: lua_State, h: string, a: number | ((n: number) => boolean), b
         }
 
         set();
-        return;
+        return 0;
     };
 }
 
 function nargsEquals(n: number): (n: number) => boolean {
-    return (_: number) => n === n;
+    return (_: number) => _ === n;
 }
 
 function func(L: lua_State, h: string, n: number, call: () => number): (o: lua_State) => number;
@@ -129,6 +136,20 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
             console.log(lua.lua_tojsstring(_, -1));
             return 0;
         },
+        // PLAYER API
+        state: func(luaState, "state([pid], val)",
+            (n: number) => n === 1 || n === 2,
+            () => {
+                const size = nargs(luaState);
+                const o = getobject(luaState, -1);
+
+                api.state(
+                    size > 1 ? getnumber(luaState, 1) : o,
+                    size === 1 ? undefined : o
+                );
+                return 0;
+            }
+        ),
         btn: func(luaState, "btn([pid], bid)",
             (n: number) => n === 1 || n === 2,
             () => {
@@ -138,6 +159,18 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
                     size > 1 ? getnumber(luaState, 1) : api.P1,
                     getnumber(luaState, -1),
                 ));
+                return 1;
+            }
+        ),
+        pbound: func(luaState, "pbound(pid)", 1,
+            () => {
+                pushboolean(luaState, api.pbound(getnumber(luaState, 1)));
+                return 1;
+            }
+        ),
+        plabel: func(luaState, "plabel(pid)", 1,
+            () => {
+                pushstring(luaState, api.plabel(getnumber(luaState, 1)));
                 return 1;
             }
         ),
@@ -228,11 +261,11 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
                 getnumber(luaState, 3),
             )
         ),
-        sflip: getset(luaState, "sflip(id, [h, v])", 1, 2,
+        sflip: getset(luaState, "sflip(id, [h, v])", 1, 3,
             () => {
-                const scale = api.sflip(getnumber(luaState, 1));
-                pushboolean(luaState, scale.h);
-                pushboolean(luaState, scale.v);
+                const flip = api.sflip(getnumber(luaState, 1));
+                pushboolean(luaState, flip.h);
+                pushboolean(luaState, flip.v);
                 return 2;
             },
             () => api.sflip(
@@ -263,10 +296,71 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
                 getnumber(luaState, 1),
                 getnumber(luaState, 2),
             )
-        )
+        ),
+        // MATH API
+        abs: func(luaState, "abs(val)", 1,
+            () => {
+                pushnumber(luaState, api.abs(getnumber(luaState, 1)));
+                return 1;
+            }
+        ),
+        floor: func(luaState, "floor(val)", 1,
+            () => {
+                pushnumber(luaState, api.floor(getnumber(luaState, 1)));
+                return 1;
+            }
+        ),
+        ceil: func(luaState, "ceil(val)", 1,
+            () => {
+                pushnumber(luaState, api.ceil(getnumber(luaState, 1)));
+                return 1;
+            }
+        ),
+        sign: func(luaState, "sign(val)", 1,
+            () => {
+                pushnumber(luaState, api.sign(getnumber(luaState, 1)));
+                return 1;
+            }
+        ),
+        min: func(luaState, "min(a, b)", 2,
+            () => {
+                pushnumber(luaState, api.min(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2)
+                ));
+                return 1;
+            }
+        ),
+        max: func(luaState, "max(a, b)", 2,
+            () => {
+                pushnumber(luaState, api.max(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2)
+                ));
+                return 1;
+            }
+        ),
+        clamp: func(luaState, "clamp(val, min, max)", 3,
+            () => {
+                pushnumber(luaState, api.clamp(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2),
+                    getnumber(luaState, 3)
+                ));
+                return 1;
+            }
+        ),
     };
 
-    Object.entries(funs).forEach((k, v) => lua.lua_register(luaState, k, v));
+    Object.entries(funs).forEach(([k, v]) => {
+        lua.lua_register(luaState, k, (_: lua_State) => {
+            try {
+                return v(_);
+            } catch(e) {
+                throw new Error(`error in ${k} implementation: ${e}`);
+            }
+        });
+    });
 
     if (script !== undefined) {
         if (lauxlib.luaL_dostring(luaState, to_luastring(script)) != lua.LUA_OK) {

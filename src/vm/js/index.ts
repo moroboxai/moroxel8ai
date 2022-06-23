@@ -33,7 +33,11 @@ export function initJS(script: string | undefined, api: Moroxel8AISDK.IMoroxel8A
         BUP: api.BUP,
         BDOWN: api.BDOWN,
         print: api.print.bind(api),
+        // PLAYER API
+        state: api.state.bind(api),
         btn: api.btn.bind(api),
+        pbound: api.pbound.bind(api),
+        plabel: api.plabel.bind(api),
         // TILEMAP API
         tmap: api.tmap.bind(api),
         // MAP API
@@ -48,6 +52,14 @@ export function initJS(script: string | undefined, api: Moroxel8AISDK.IMoroxel8A
         sflip: api.sflip.bind(api),
         sscale: api.sscale.bind(api),
         srot: api.srot.bind(api),
+        // MATH API
+        abs: api.abs.bind(api),
+        floor: api.floor.bind(api),
+        ceil: api.ceil.bind(api),
+        sign: api.sign.bind(api),
+        min: api.min.bind(api),
+        max: api.max.bind(api),
+        clamp: api.clamp.bind(api),
     };
 
     const params = Object.keys(builtins);

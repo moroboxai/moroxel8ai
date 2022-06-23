@@ -268,6 +268,16 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     BUP: number = 2;
     BDOWN: number = 3;
 
+    print(...values: any[]): void {
+        console.log(...values);
+    }
+
+    state(val: any): void;
+    state(pid: number, val: any): void;
+    state(pid: any | number, val?: any): void {
+        this._player.sendState(val === undefined ? pid : val, val === undefined ? undefined : pid);
+    }
+
     btn(bid: number): boolean;
     btn(pid: number, bid: number): boolean;
     btn(pid: number, bid?: number): boolean {
@@ -293,8 +303,14 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
         }
     }
 
-    print(...values: any[]): void {
-        console.log(...values);
+    pbound(pid: number): boolean {
+        const player = this._player.controller(pid);
+        return player === undefined ? false : player.isBound;
+    }
+
+    plabel(pid: number): string {
+        const player = this._player.controller(pid);
+        return player === undefined ? "" : player.label;
     }
 
     tmap(id: string): void {
@@ -353,6 +369,16 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
 
     sdraw(id: number): void {
         return this._ppu.sdraw(id);
+    }
+
+    abs = Math.abs;
+    floor = Math.floor;
+    ceil = Math.ceil;
+    sign = Math.sign;
+    min = Math.min;
+    max = Math.max;
+    clamp(val: number, min: number, max: number): number {
+        return Math.min(Math.max(val, min), max);
     }
 }
 

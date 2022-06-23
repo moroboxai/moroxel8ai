@@ -155,7 +155,6 @@ export class PaletteColorFilter extends PIXI.Filter
     }
 
     setPalette(value: Palette) {
-        console.log(value.colors);
         this.uniforms.colors = value.texture;
         this.uniforms.numColors = value.length;
     }
