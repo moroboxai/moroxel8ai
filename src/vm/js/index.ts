@@ -32,6 +32,8 @@ export function initJS(script: string | undefined, api: Moroxel8AISDK.IMoroxel8A
         BRIGHT: api.BRIGHT,
         BUP: api.BUP,
         BDOWN: api.BDOWN,
+        clear: api.clear.bind(api),
+        camera: api.camera.bind(api),
         print: api.print.bind(api),
         // PLAYER API
         state: api.state.bind(api),
@@ -40,18 +42,21 @@ export function initJS(script: string | undefined, api: Moroxel8AISDK.IMoroxel8A
         plabel: api.plabel.bind(api),
         // TILEMAP API
         tmap: api.tmap.bind(api),
-        // MAP API
-        mmode: api.mmode.bind(api),
-        mclear: api.mclear.bind(api),
-        mtile: api.mtile.bind(api),
-        mscroll: api.mscroll.bind(api),
+        tmode: api.tmode.bind(api),
         // SPRITE API
         stile: api.stile.bind(api),
         sorigin: api.sorigin.bind(api),
-        spos: api.spos.bind(api),
         sflip: api.sflip.bind(api),
         sscale: api.sscale.bind(api),
         srot: api.srot.bind(api),
+        sclear: api.sclear.bind(api),
+        sdraw: api.sdraw.bind(api),
+        // TEXT API
+        fnt: api.fnt.bind(api),
+        falign: api.falign.bind(api),
+        fcolor: api.fcolor.bind(api),
+        fclear: api.fclear.bind(api),
+        fdraw: api.fdraw.bind(api),
         // MATH API
         abs: api.abs.bind(api),
         floor: api.floor.bind(api),

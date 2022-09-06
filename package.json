@@ -1,6 +1,6 @@
 {
   "name": "moroxel8ai",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "description": "Fantasy 8-bit CPU for MoroboxAI",
   "author": "moroboxai",
   "main": "./lib/cjs/index.js",
@@ -31,7 +31,7 @@
     "gulp-typescript": "^6.0.0-alpha.1",
     "moroboxai-game-sdk": "^0.1.0-alpha.14",
     "moroboxai-player-web": "^0.1.0-alpha.10",
-    "moroxel8ai-sdk": "^0.1.0-alpha.5",
+    "moroxel8ai-sdk": "^0.1.0-alpha.6",
     "path": "^0.12.7",
     "pixi.js": "^5.3.3",
     "ts-loader": "^9.2.8",

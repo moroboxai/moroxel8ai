@@ -1,22 +1,23 @@
 // select tilemap.png as the tilemap
-tmap('tilemap');
-// assign the tile (0, 3) to sprite 0
-stile(0, 0, 3, 1, 1);
-// center sprite 0 on screen
-sorigin(0, 8, 16);
+let tilemap = tmap('tilemap');
+let font = fnt('MoroboxAIRetro');
 
 let yFloor = 7 * 16;
 let xPlayer = 0;
 let yPlayer = yFloor;
 let isOnFloor = true;
-let xSpeed = 1.5;
+let xSpeed = 0.75;
 let xDir = 1;
 let xVel = 0;
 let yVel = 0;
 let time = 0;
 
+tmode(16);
+
 function tick(deltaTime) {
-    time += deltaTime;
+    clear(0);
+    
+    time = time + deltaTime;
 
     if (btn(P1, BRIGHT)) {
         xVel = xSpeed;
@@ -27,8 +28,8 @@ function tick(deltaTime) {
     }
 
     if (!isOnFloor) {
-        yVel += deltaTime * 0.25;
-        yPlayer += yVel * deltaTime;
+        yVel = yVel + deltaTime * 0.25;
+        yPlayer = yPlayer + yVel * deltaTime;
 
         if (yPlayer >= yFloor) {
             isOnFloor = true;
@@ -38,29 +39,37 @@ function tick(deltaTime) {
 
     if (btn(BUP) && isOnFloor) {
         isOnFloor = false;
-        yVel -= 5;
+        yVel = yVel - 5;
     }
 
     xPlayer = xPlayer + xVel * deltaTime;
-    if (xVel !== 0) {
+    camera(xPlayer, SHEIGHT / 2);
+
+    // Background
+    sclear();;
+    stile(tilemap, 0, 0, 1, 1);
+
+    for (let i = -4; i < 18; ++i) {
+        sdraw(floor((xPlayer / 16) + i) * 16, 0);
+        sdraw(floor((xPlayer / 16) + i) * 16, 7 * 16);
+    }
+
+    // Player
+    sclear();
+    sflip(xDir < 0, false);
+    sorigin(8, 16);
+
+    if (xVel != 0) {
         xDir = sign(xVel);
-        stile(0, 0 + floor((time % 16) / 8), 3, 1, 1);
+        stile(tilemap, 0 + floor((time % 16) / 8), 3, 1, 1);
     } else {
-        stile(0, 0, 3, 1, 1);
+        stile(tilemap, 0, 3, 1, 1);
     }
 
-    sflip(0, xDir < 0, false);
+    sdraw(xPlayer, yPlayer);
 
-    spos(0, SWIDTH / 2, yPlayer);
-
-    const dX = xPlayer - (SWIDTH / 2);
-
-    mclear();
-    mscroll(dX, 0);
-
-    mmode(16);
-    for (let i = -2; i < 9; ++i) {
-        mtile(floor(dX / 16) + i, 0, 0, 0);
-        mtile(floor(dX / 16) + i, 7, 0, 0);
-    }
+    // Text
+    fclear();
+    fcolor(0xFFFFFF);
+    fdraw(font, "JS SAMPLE", 4, 24);
 }

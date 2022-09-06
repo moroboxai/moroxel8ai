@@ -4,6 +4,14 @@ function hash(r: number, g: number, b: number, a: number): number {
     return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
+function numberToColor(v: number): { r: number, g: number, b: number } {
+    return {
+        r: ((v >> 16) & 0xFF),
+        g: ((v >> 8) & 0xFF),
+        b: v & 0xFF
+    }
+}
+
 export class Palette {
     private _capacity: number;
     private _colors: Uint8Array;
@@ -54,7 +62,17 @@ export class Palette {
      * @param {number} color - color
      * @returns its index or undefined
      */
-    index(r: number, g: number, b: number, a: number): number | undefined {
+    index(c: number): number | undefined;
+    index(r: number, g: number, b: number, a: number): number | undefined;
+    index(r: number, g?: number, b?: number, a?: number): number | undefined {
+        if (g === undefined || b === undefined || a === undefined) {
+            const rgb = numberToColor(r);
+            r = rgb.r;
+            g = rgb.g;
+            b = rgb.b;
+            a = 0xFF;
+        }
+
         const color = hash(r, g, b, a);
         return this._idByColor[color];
     }
@@ -64,7 +82,17 @@ export class Palette {
      * @param {number} color - new color
      * @returns index or 0 if the capacity is exceeded
      */
-    push(r: number, g: number, b: number, a: number): number {
+    push(c: number): number;
+    push(r: number, g: number, b: number, a: number): number;
+    push(r: number, g?: number, b?: number, a?: number): number {
+        if (g === undefined || b === undefined || a === undefined) {
+            const rgb = numberToColor(r);
+            r = rgb.r;
+            g = rgb.g;
+            b = rgb.b;
+            a = 0xFF;
+        }
+
         const color = hash(r, g, b, a);
         if (color in this._idByColor) {
             return this._idByColor[color];

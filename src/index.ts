@@ -2,7 +2,7 @@ import * as MoroboxAIGameSDK from 'moroboxai-game-sdk';
 import * as Moroxel8AISDK from 'moroxel8ai-sdk';
 import * as PIXI from 'pixi.js';
 import { IVM, initVM } from './vm';
-import { PPU, AssetHeader, TileMapHeader } from './ppu';
+import { PPU, AssetHeader, FontHeader, TileMapHeader } from './ppu';
 
 const PHYSICS_TIMESTEP = 0.01;
 
@@ -73,8 +73,8 @@ function loadAssets(assets: AssetHeader[] | undefined, gameServer: MoroboxAIGame
         // add each asset to the loader
         const validAssets = new Array<AssetHeader>();
         assets.forEach(_ => {
-            if (_.id === undefined) {
-                console.error('skip asset without id');
+            if (_.name === undefined) {
+                console.error('skip asset without name');
                 return;
             }
 
@@ -137,7 +137,7 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     private _isPlaying: boolean = false;
     private _displayedTickError: boolean = false;
     private _physicsAccumulator: number = 0;
-    private _ppu: PPU;
+    private _ppu!: PPU;
 
     constructor(player: MoroboxAIGameSDK.IPlayer) {
         this._player = player;
@@ -148,11 +148,11 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
             resolution: window.devicePixelRatio || 1,
             width: this._player.width,
             height: this._player.height,
+            clearBeforeRender: false,
             antialias: false
         });
 
         this._ppu = new PPU(this._app.renderer);
-        this._app.stage.addChild(this._ppu.sprite);
 
         // init the game and load assets
         initGame(player, (asset, res) => this._handleAssetLoaded(asset, res)).then((data) => {
@@ -166,7 +166,9 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 
     _handleAssetLoaded(asset: AssetHeader, res: PIXI.LoaderResource) {
-        if (res.texture !== undefined) {
+        if (res.extension === "fnt") {
+            this._ppu.addFont(asset as FontHeader);
+        } else if (res.texture !== undefined) {
             this._ppu.addTileMap(asset as TileMapHeader, res.texture);
         }
     }
@@ -193,20 +195,19 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
         }
     }
 
-    // Render loop
-    private _render() {
-        if (this._app === undefined) return;
-        this._ppu.render(this._app.renderer);
-    }
-
     private _tick(delta: number) {
+        this._ppu.drawEnabled = false;
+
         this._physicsAccumulator += delta * this._player.speed;
         while (this._physicsAccumulator > PHYSICS_TIMESTEP) {
             this._update(PHYSICS_TIMESTEP);
             this._physicsAccumulator -= PHYSICS_TIMESTEP;
         }
 
-        this._render();
+        this._ppu.drawEnabled = true;
+        this._ppu.preRender();
+        this._update(PHYSICS_TIMESTEP);
+        this._ppu.postRender();
     }
 
     // IGame interface
@@ -268,6 +269,15 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     BUP: number = 2;
     BDOWN: number = 3;
 
+    clear(): void;
+    clear(c?: number): void {
+        this._ppu.clear(c !== undefined ? c : 0);
+    }
+
+    camera(x: number, y: number): void {
+        this._ppu.camera(x, y);
+    }
+
     print(...values: any[]): void {
         console.log(...values);
     }
@@ -313,62 +323,60 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
         return player === undefined ? "" : player.label;
     }
 
-    tmap(id: string): void {
-        this._ppu.tmap(id);
+    tmap(name: string): number {
+        return this._ppu.tmap(name);
     }
 
-    mmode(val: number): void {
-        this._ppu.mmode(val);
-    }
-
-    mclear(): void {
-        this._ppu.mclear();
-    }
-
-    mtile(x: number, y: number, i: number, j: number, w?: number, h?: number): void {
-        this._ppu.mtile(x, y, i, j, w, h);
-    }
-
-    mscroll(x: number, y: number): void {
-        return this._ppu.mscroll(x, y);
+    tmode(val: number): void {
+        this._ppu.tmode(val);
     }
 
     stile(id: number, i: number, j: number, w?: number, h?: number): void {
         this._ppu.stile(id, i, j, w, h);
     }
 
-    sorigin(id: number): { x: number; y: number; };
-    sorigin(id: number, x: number, y: number): void;
-    sorigin(id: number, x?: number, y?: number): void | { x: number; y: number; } {
-        return this._ppu.sorigin(id, x, y);
+    sorigin(x: number, y: number): void {
+        this._ppu.sorigin(x, y);
     }
 
-    spos(id: number): { x: number; y: number; };
-    spos(id: number, x: number, y: number): void;
-    spos(id: number, x?: number, y?: number): void | { x: number; y: number; } {
-        return this._ppu.spos(id, x, y);
+    sflip(h: boolean, v: boolean): void {
+        this._ppu.sflip(h, v);
     }
 
-    sflip(id: number): { h: boolean; v: boolean; };
-    sflip(id: number, h: boolean, v: boolean): void;
-    sflip(id: number, h?: boolean, v?: boolean): void | { h: boolean; v: boolean; } {
-        return this._ppu.sflip(id, h, v);
+    sscale(x: number, y: number): void {
+        return this._ppu.sscale(x, y);
     }
 
-    sscale(id: number): { x: number; y: number; };
-    sscale(id: number, x: number, y: number): void;
-    sscale(id: number, x?: number, y?: number): void | { x: number; y: number; } {
-        return this._ppu.sscale(id, x, y);
+    srot(a: number): void {
+        this._ppu.srot(a);
     }
 
-    srot(id: number): number;
-    srot(id: number, a: number): void;
-    srot(id: number, a?: number): number | void {
-        return this._ppu.srot(id, a);
+    sclear(): void {
+        this._ppu.sclear();
     }
 
-    sdraw(id: number): void {
-        return this._ppu.sdraw(id);
+    sdraw(x: number, y: number): void {
+        this._ppu.sdraw(x, y);
+    }
+
+    fnt(name: string): number {
+        return this._ppu.fnt(name);
+    }
+
+    falign(x: number, y: number): void {
+        this._ppu.falign(x, y);
+    }
+
+    fcolor(c: number): void {
+        this._ppu.fcolor(c);
+    }
+
+    fclear(): void {
+        this._ppu.fclear();
+    }
+
+    fdraw(id: number, text: string, x: number, y: number): void {
+        this._ppu.fdraw(id, text, x, y);
     }
 
     abs = Math.abs;

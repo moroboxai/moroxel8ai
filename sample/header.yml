@@ -1,6 +1,9 @@
 assets:
-    - id: tilemap
+    - name: palette
+      path: palette.png
+    - name: tilemap
       path: tilemap.png
-      mode: 16x16
+    - name: MoroboxAIRetro
+      path: MoroboxAIRetro.fnt
 boot: Moroxel8AI
 main: game.lua

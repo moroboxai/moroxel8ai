@@ -132,6 +132,26 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
     setnameval('BDOWN', api.BDOWN);
 
     const funs = {
+        clear: func(luaState, "clear([c])",
+            (n: number) => n === 0 || n === 1,
+            () => {
+                const size = nargs(luaState);
+                
+                api.clear(
+                    size > 0 ? getnumber(luaState, 1) : 0
+                )
+                return 0;
+            }
+        ),
+        camera: func(luaState, "camera(x, y)", 2,
+            () => {
+                api.camera(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2)
+                );
+                return 0;
+            }
+        ),
         print: (_: lua_State) => {
             console.log(lua.lua_tojsstring(_, -1));
             return 0;
@@ -177,45 +197,13 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
         // TILEMAP API
         tmap: func(luaState, "tmap(id)", 1,
             () => {
-                api.tmap(getstring(luaState, 1));
-                return 0;
+                pushnumber(luaState, api.tmap(getstring(luaState, 1)));
+                return 1;
             }
         ),
-        // MAP API
-        mmode: func(luaState, "mmode(val)", 1,
+        tmode: func(luaState, "tmode(val)", 1,
             () => {
-                api.mmode(getnumber(luaState, 1));
-                return 0;
-            }
-        ),
-        mclear: func(luaState, "mclear()", 0,
-            () => {
-                api.mclear();
-                return 0;
-            }
-        ),
-        mtile: func(luaState, "mtile(x, y, i, j, [w, h])",
-            (n: number) => n === 4 || n === 6,
-            () => {
-                const size = nargs(luaState);
-
-                api.mtile(
-                    getnumber(luaState, 1),
-                    getnumber(luaState, 2),
-                    getnumber(luaState, 3),
-                    getnumber(luaState, 4),
-                    size > 4 ? getnumber(luaState, 5) : undefined,
-                    size > 5 ? getnumber(luaState, 6) : undefined
-                )
-                return 0;
-            }
-        ),
-        mscroll: func(luaState, "mscroll(x, y)", 2,
-            () => {
-                api.mscroll(
-                    getnumber(luaState, 1),
-                    getnumber(luaState, 2)
-                );
+                api.tmode(getnumber(luaState, 1));
                 return 0;
             }
         ),
@@ -235,67 +223,96 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
                 return 0;
             }
         ),
-        sorigin: getset(luaState, "sorigin(id, [x, y])", 1, 3,
+        sorigin: func(luaState, "sorigin(x, y)", 2,
             () => {
-                const pos = api.sorigin(getnumber(luaState, 1));
-                pushnumber(luaState, pos.x);
-                pushnumber(luaState, pos.y);
-                return 2;
-            },
-            () => api.sorigin(
-                getnumber(luaState, 1),
-                getnumber(luaState, 2),
-                getnumber(luaState, 3),
-            )
+                api.sorigin(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2)
+                );
+                return 0;
+            }
         ),
-        spos: getset(luaState, "spos(id, [x, y])", 1, 3,
+        sflip: func(luaState, "sflip(h, v)", 2,
             () => {
-                const pos = api.spos(getnumber(luaState, 1));
-                pushnumber(luaState, pos.x);
-                pushnumber(luaState, pos.y);
-                return 2;
-            },
-            () => api.spos(
-                getnumber(luaState, 1),
-                getnumber(luaState, 2),
-                getnumber(luaState, 3),
-            )
+                api.sflip(
+                    getboolean(luaState, 1),
+                    getboolean(luaState, 2)
+                );
+                return 0;
+            }
         ),
-        sflip: getset(luaState, "sflip(id, [h, v])", 1, 3,
+        sscale: func(luaState, "sscale(x, y)", 2,
             () => {
-                const flip = api.sflip(getnumber(luaState, 1));
-                pushboolean(luaState, flip.h);
-                pushboolean(luaState, flip.v);
-                return 2;
-            },
-            () => api.sflip(
-                getnumber(luaState, 1),
-                getboolean(luaState, 2),
-                getboolean(luaState, 3),
-            )
+                api.sscale(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2)
+                );
+                return 0;
+            }
         ),
-        sscale: getset(luaState, "sscale(id, [x, y])", 1, 3,
+        srot: func(luaState, "srot(a)", 1,
             () => {
-                const scale = api.sscale(getnumber(luaState, 1));
-                pushnumber(luaState, scale.x);
-                pushnumber(luaState, scale.y);
-                return 2;
-            },
-            () => api.sscale(
-                getnumber(luaState, 1),
-                getnumber(luaState, 2),
-                getnumber(luaState, 3),
-            )
+                api.srot(
+                    getnumber(luaState, 1)
+                );
+                return 0;
+            }
         ),
-        srot: getset(luaState, "srot(id, [a])", 1, 2,
+        sclear: func(luaState, "sclear()", 0,
             () => {
-                pushnumber(luaState, api.srot(getnumber(luaState, 1)));
+                api.sclear();
+                return 0;
+            }
+        ),
+        sdraw: func(luaState, "sdraw(x, y)", 2,
+            () => {
+                api.sdraw(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2)
+                );
+                return 0;
+            }
+        ),
+        // TEXT API
+        fnt: func(luaState, "fnt(name)", 1,
+            () => {
+                pushnumber(luaState, api.fnt(getstring(luaState, 1)));
                 return 1;
-            },
-            () => api.srot(
-                getnumber(luaState, 1),
-                getnumber(luaState, 2),
-            )
+            }
+        ),    
+        falign: func(luaState, "falign(x, y)", 2,
+            () => {
+                api.falign(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2)
+                );
+                return 0;
+            }
+        ),
+        fcolor: func(luaState, "fcolor(c)", 1,
+            () => {
+                api.fcolor(
+                    getnumber(luaState, 1)
+                );
+                return 0;
+            }
+        ),
+        fclear: func(luaState, "fclear()", 0,
+            () => {
+                api.fclear();
+                return 0;
+            }
+        ),
+        fdraw: func(luaState, "fdraw(id, text, x, y)", 4,
+            () => {
+                api.fdraw(
+                    getnumber(luaState, 1),
+                    getstring(luaState, 2),
+                    getnumber(luaState, 3),
+                    getnumber(luaState, 4)
+                );
+                return 0;
+            }
         ),
         // MATH API
         abs: func(luaState, "abs(val)", 1,
