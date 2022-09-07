@@ -30,7 +30,7 @@ sample/
 ├─ assets/
 │  ├─ tilemap.png
 ├─ game.lua
-├─ header.json
+├─ header.yml
 ├─ index.html
 ```
 
@@ -40,34 +40,36 @@ The `assets` directory is where Moroxel8AI will load assets from. Here is `tilem
 
 The `header.json` contains some metadata about assets and how to run the game:
 
-```json
-{
-    "assets": [
-        {"id": "tilemap", "path": "tilemap.png", "mode": "16x16"}
-    ],
-    "boot": "Moroxel8AI",
-    "main": "game.lua"
-}
+```yml
+assets:
+    - name: tilemap
+      path: tilemap.png
+boot: Moroxel8AI
+main: game.lua
 ```
 
 All the game logic is written in `game.lua`:
 
 ```lua
-WIDTH = 256;
-HEIGHT = 256;
-
 -- select tilemap.png as the tilemap
-tmap('tilemap');
--- assign the tile 0 to sprite 0
-stile(0, 6);
--- origin of sprite 0 is the center
-sorigin(0, 8, 8);
--- center sprite 0 on screen
-spos(0, WIDTH / 2, HEIGHT / 2);
+local tilemap = tmap('tilemap')
+-- set the size of one tile to 16x16 pixels
+tmode(16)
+-- assign the tile (0, 3) to sprite
+stile(tilemap, 0, 3, 1, 1)
+-- set the origin to center
+sorigin(8, 8)
+
+local angle = 0
 
 function tick(deltaTime)
-    -- rotate sprite 0
-    srot(0, srot(0) + deltaTime)
+    -- clear screen
+    clear()
+    -- rotate sprite
+    angle = angle + deltaTime
+    srot(angle)
+    -- draw sprite on screen
+    sdraw(SWIDTH / 2, SHEIGHT / 2)
 end
 ```
 
@@ -77,8 +79,8 @@ Now, all remain is `index.html` which is simply loading MoroboxAI + Moroxel8AI a
 <html>
     <head>
         <title>moroxel8ai</title>
-        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/moroboxai-player-web@0.1.0-alpha.10/lib/umd/moroboxai-player-web.min.js"></script>
-        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/moroxel8ai@0.1.0-alpha.1/lib/umd/moroxel8ai.min.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/moroboxai-player-web@latest/lib/umd/moroboxai-player-web.min.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/moroxel8ai@latest/lib/umd/moroxel8ai.min.js"></script>
     </head>
     <body>
         <div id="player"></div>
