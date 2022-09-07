@@ -129,7 +129,7 @@ For that you can install **http-server**:
 npm install http-server -g
 ```
 
-Open a command prompt in the `sample` folder and run:
+Open a command prompt in the `moroxel8ai` folder and run:
 
 ```bash
 http-server
