@@ -12,10 +12,9 @@ local xVel = 0
 local yVel = 0
 local time = 0
 
-tmode(16)
-
 function tick(deltaTime)
     clear(0)
+    tmode(16)
     
     time = time + deltaTime
 
@@ -69,7 +68,13 @@ function tick(deltaTime)
     sdraw(xPlayer, yPlayer)
 
     -- Text
+    tmode(8)
+    sclear()
+    stile(tilemap, 0, 8, 3, 3)
+    sbox(8, 24, 96, 32)
+    
     fclear()
     fcolor(0xFFFFFF)
-    fdraw(font, "LUA SAMPLE", 4, 24)
+    falign(0.5, 0.5)
+    fdraw(font, "LUA SAMPLE", 56, 40)
 end

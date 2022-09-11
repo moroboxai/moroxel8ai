@@ -3,6 +3,7 @@ import * as PIXI from 'pixi.js';
 import { FontHeader, TileMapHeader } from './header';
 import { TileMap } from './tilemap';
 import { PaletteColorFilter, Palette, palettize } from './palette';
+import { NineSliceTexture, NineSliceSprite } from './nineslice';
 import { RetroColorFilter } from './retrocolor';
 export * from './header';
 
@@ -12,6 +13,8 @@ function clamp(v: number, a: number, b: number): number {
 
 class OAMText {
     private _text: PIXI.BitmapText | undefined;
+    alignX: number = 0;
+    alignY: number = 0;
 
     constructor() {
     }
@@ -56,6 +59,8 @@ class OAMText {
         this.text.fontName = constants.DEFAULT_FONT;
         this.text.position.set(0, 0);
         this.text.tint = 0xFFFFFF;
+        this.alignX = 0;
+        this.alignY = 0;
     }
 }
 
@@ -194,6 +199,7 @@ export class PPU extends BackBuffer {
     private _tilemaps: TileMap[];
     private _text: OAMText;
     private _sprite: OAMSprite;
+    private _boxSprite: NineSliceSprite;
     private _spriteIndex: number = 0;
     private _palette: Palette = new Palette(constants.NUM_COLORS);
     private _paletteFilter: PaletteColorFilter;
@@ -207,11 +213,6 @@ export class PPU extends BackBuffer {
         this._renderer = renderer;
         this.sprite.position.set(0, 0);
 
-        this._clearSprite = new PIXI.Sprite(PIXI.Texture.WHITE);
-        this._clearSprite.width = constants.SCREEN_WIDTH;
-        this._clearSprite.height = constants.SCREEN_HEIGHT;
-        this._clearSprite.tint = 0;
-
         this._paletteFilter = new PaletteColorFilter(this._palette);
 
         this._fonts = new Array<FontHeader>();
@@ -220,6 +221,14 @@ export class PPU extends BackBuffer {
         this._text = new OAMText();
         this._sprite = new OAMSprite();
         this._sprite.sprite.filters = [this._paletteFilter];
+        this._boxSprite = new NineSliceSprite();
+        this._boxSprite.sprite.filters = [this._paletteFilter];
+
+        this._clearSprite = new PIXI.Sprite(PIXI.Texture.WHITE);
+        this._clearSprite.width = constants.SCREEN_WIDTH;
+        this._clearSprite.height = constants.SCREEN_HEIGHT;
+        this._clearSprite.tint = 0;
+        this._clearSprite.filters = [this._paletteFilter];
 
         this.drawEnabled = true;
     }
@@ -347,16 +356,26 @@ export class PPU extends BackBuffer {
         this._sprite.clear();
     }
 
+    private _render(sprite: PIXI.Sprite): void {
+        if (this._spriteIndex < constants.NUM_SPRITES) {
+            this._renderer.render(sprite, this.buffer);
+            this._spriteIndex += 1;
+        }
+    }
+
     sdraw(x: number, y: number): void {
         if (!this.drawEnabled) return;
 
         this._sprite.x = x - this._cameraX;
         this._sprite.y = y - this._cameraY;
-        
-        if (this._spriteIndex < constants.NUM_SPRITES) {
-            this._renderer.render(this._sprite.sprite, this.buffer);
-            this._spriteIndex += 1;
-        }
+        this._render(this._sprite.sprite);
+    }
+
+    sbox(x: number, y: number, w: number, h: number): void {
+        if (!this.drawEnabled) return;
+
+        this._boxSprite.texture = new NineSliceTexture(this._sprite.sprite.texture);
+        this._spriteIndex += this._boxSprite.render(x, y, w, h, this._renderer, this.buffer, constants.NUM_SPRITES - this._spriteIndex);
     }
 
     fnt(name: string): number {
@@ -372,7 +391,8 @@ export class PPU extends BackBuffer {
     falign(x: number, y: number): void {
         if (!this.drawEnabled) return;
         
-
+        this._text.alignX = x;
+        this._text.alignY = y;
     }
 
     fcolor(c: number): void {
@@ -396,6 +416,8 @@ export class PPU extends BackBuffer {
         if (id >= 0 && id < this._fonts.length) {
             this._text.font = this._fonts[id].name!;
             this._text.value = text;
+            this._text.x -= Math.floor(this._text.text.textWidth * this._text.alignX);
+            this._text.y -= Math.floor(this._text.text.textHeight * this._text.alignY);
             this._text.text.filters = [this._paletteFilter];
             this._renderer.render(this._text.text, this.buffer);
         }

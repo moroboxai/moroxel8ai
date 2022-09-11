@@ -51,6 +51,7 @@ export function initJS(script: string | undefined, api: Moroxel8AISDK.IMoroxel8A
         srot: api.srot.bind(api),
         sclear: api.sclear.bind(api),
         sdraw: api.sdraw.bind(api),
+        sbox: api.sbox.bind(api),
         // TEXT API
         fnt: api.fnt.bind(api),
         falign: api.falign.bind(api),

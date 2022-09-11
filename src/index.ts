@@ -359,6 +359,10 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
         this._ppu.sdraw(x, y);
     }
 
+    sbox(x: number, y: number, w: number, h: number): void {
+        this._ppu.sbox(x, y, w, h);
+    }
+
     fnt(name: string): number {
         return this._ppu.fnt(name);
     }

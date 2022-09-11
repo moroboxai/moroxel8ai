@@ -6,4 +6,4 @@ assets:
     - name: MoroboxAIRetro
       path: MoroboxAIRetro.fnt
 boot: Moroxel8AI
-main: game.lua
+main: game.js

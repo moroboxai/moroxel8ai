@@ -273,6 +273,17 @@ export function initLua(script: string | undefined, api: Moroxel8AISDK.IMoroxel8
                 return 0;
             }
         ),
+        sbox: func(luaState, "sbox(x, y, w, h)", 4,
+            () => {
+                api.sbox(
+                    getnumber(luaState, 1),
+                    getnumber(luaState, 2),
+                    getnumber(luaState, 3),
+                    getnumber(luaState, 4)
+                );
+                return 0;
+            }
+        ),
         // TEXT API
         fnt: func(luaState, "fnt(name)", 1,
             () => {

@@ -12,10 +12,9 @@ let xVel = 0;
 let yVel = 0;
 let time = 0;
 
-tmode(16);
-
 function tick(deltaTime) {
     clear(0);
+    tmode(16);
     
     time = time + deltaTime;
 
@@ -46,7 +45,7 @@ function tick(deltaTime) {
     camera(xPlayer, SHEIGHT / 2);
 
     // Background
-    sclear();;
+    sclear();
     stile(tilemap, 0, 0, 1, 1);
 
     for (let i = -4; i < 18; ++i) {
@@ -69,7 +68,13 @@ function tick(deltaTime) {
     sdraw(xPlayer, yPlayer);
 
     // Text
+    tmode(8);
+    sclear();
+    stile(tilemap, 0, 8, 3, 3);
+    sbox(8, 24, 96, 32);
+    
     fclear();
     fcolor(0xFFFFFF);
-    fdraw(font, "JS SAMPLE", 4, 24);
+    falign(0.5, 0.5);
+    fdraw(font, "JS SAMPLE", 56, 40);
 }
