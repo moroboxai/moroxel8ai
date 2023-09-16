@@ -1,23 +1,87 @@
 <html>
     <head>
-        <title>moroboxai-lua-sdk</title>
-        <script type="text/javascript" src="./node_modules/moroboxai-player-web/lib/umd/moroboxai-player-web.js"></script>
-        <script type="text/javascript" src="./lib/umd/moroxel8ai.js"></script>
+        <title>Moroxel8AI Sample</title>
+        <!-- For the player -->
+        <script
+            type="text/javascript"
+            src="https://cdn.jsdelivr.net/npm/moroboxai-player-web@latest/lib/umd/moroboxai-player-web.min.js"
+        ></script>
+        <!-- For the editor -->
+        <script
+            type="text/javascript"
+            src="https://cdn.jsdelivr.net/npm/moroboxai-editor-web@latest/lib/umd/moroboxai-editor-web.min.js"
+        ></script>
     </head>
-    <body>
-        <div id="player"></div>
+
+    <body class="vertical">
+        <div class="horizontal">
+            <div id="player"></div>
+            <div id="editor"></div>
+        </div>
+        <div id="info">
+            <div>
+                moroboxai-game-sdk v<span
+                    id="moroboxai-game-sdk-version"
+                ></span>
+            </div>
+            <div>
+                moroboxai-player-sdk v<span
+                    id="moroboxai-player-sdk-version"
+                ></span>
+            </div>
+            <div>
+                moroboxai-player-web v<span
+                    id="moroboxai-player-web-version"
+                ></span>
+            </div>
+            <div>
+                moroboxai-editor-sdk v<span
+                    id="moroboxai-editor-sdk-version"
+                ></span>
+            </div>
+            <div>
+                moroboxai-editor-web v<span
+                    id="moroboxai-editor-web-version"
+                ></span>
+            </div>
+        </div>
     </body>
-    <script type="text/javascript">
-        (function() {
-            console.log(`moroboxai-player-web v${MoroboxAIPlayer.VERSION}`);
-            
-            player = MoroboxAIPlayer.init(document.getElementById("player"), {
-                url: `./sample`,
-                resizable: false,
-                autoPlay: true,
-                onReady: () => console.log("ready")
-            });
-        })();
+    <script type="module">
+        import * as Moroxel8AI from "./src/index.ts";
+
+        document.getElementById("moroboxai-game-sdk-version").innerText =
+            MoroboxAIPlayer.GAME_SDK_VERSION;
+        document.getElementById("moroboxai-player-sdk-version").innerText =
+            MoroboxAIPlayer.SDK_VERSION;
+        document.getElementById("moroboxai-player-web-version").innerText =
+            MoroboxAIPlayer.VERSION;
+        document.getElementById("moroboxai-editor-sdk-version").innerText =
+            MoroboxAIEditor.SDK_VERSION;
+        document.getElementById("moroboxai-editor-web-version").innerText =
+            MoroboxAIEditor.VERSION;
+
+        const player = MoroboxAIPlayer.init(document.getElementById("player"), {
+            // Replace with URL to your header.yml
+            url: "./sample/header.yml",
+            resizable: false,
+            autoPlay: true,
+            width: 256,
+            height: 256,
+            onReady: () => console.log("ready")
+        });
+
+        MoroboxAIEditor.init({
+            element: document.getElementById("editor"),
+            url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/piximoroxel8ai-sample/sample/agent.js",
+            width: "500px",
+            height: "400px",
+            onLoad: (language, value) =>
+                player.getController(0).loadAgent({
+                    language: language,
+                    code: value
+                }),
+            onUnload: () => player.getController(0).unloadAgent()
+        });
     </script>
 
     <style type="text/css">
@@ -25,8 +89,18 @@
             height: 100%;
             margin: 0;
             padding: 0;
+        }
+
+        .vertical {
             display: flex;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .horizontal {
+            display: flex;
+            flex-direction: row;
             align-items: center;
             justify-content: center;
         }
@@ -34,8 +108,15 @@
         #player {
             background-color: black;
             background-size: cover;
-            width: 512px;
-            height: 512px;
+            width: 256px;
+            height: 256px;
+            margin-left: 10em;
+            margin-right: 2em;
+        }
+
+        #info {
+            margin-top: 2em;
+            text-align: center;
         }
     </style>
 </html>

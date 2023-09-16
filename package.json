@@ -1,45 +1,39 @@
 {
-  "name": "moroxel8ai",
-  "version": "0.1.0-alpha.7",
-  "description": "Fantasy 8-bit CPU for MoroboxAI",
-  "author": "moroboxai",
-  "main": "./lib/cjs/index.js",
-  "module": "./lib/es/index.js",
-  "unpkg": "./lib/umd/moroxel8ai.min.js",
-  "jsdelivr": "./lib/umd/moroxel8ai.min.js",
-  "types": "./lib/index.d.ts",
-  "scripts": {
-    "build": "gulp build",
-    "build-dev": "gulp dev",
-    "prepublish": "npm run build",
-    "dev": "concurrently \"npm run build-dev\" \"vite\""
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/moroboxai/moroxel8ai.git"
-  },
-  "keywords": [],
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/moroboxai/moroxel8ai/issues"
-  },
-  "homepage": "https://github.com/moroboxai/moroxel8ai#readme",
-  "devDependencies": {
-    "concurrently": "^7.0.0",
-    "fengari": "^0.1.4",
-    "gulp": "^4.0.2",
-    "gulp-typescript": "^6.0.0-alpha.1",
-    "moroboxai-game-sdk": "^0.1.0-alpha.14",
-    "moroboxai-player-web": "^0.1.0-alpha.10",
-    "moroxel8ai-sdk": "^0.1.0-alpha.7",
-    "path": "^0.12.7",
-    "pixi.js": "^5.3.3",
-    "ts-loader": "^9.2.8",
-    "ts-node": "^10.7.0",
-    "typescript": "^4.6.3",
-    "vite": "^2.8.6",
-    "webpack": "^5.72.0",
-    "webpack-cli": "^4.9.2",
-    "webpack-stream": "^7.0.0"
-  }
+    "name": "moroxel8ai",
+    "version": "0.1.0-alpha.8",
+    "description": "Fantasy 8-bit CPU for MoroboxAI",
+    "author": "moroboxai",
+    "main": "./lib/cjs/index.cjs",
+    "module": "./lib/es/index.js",
+    "unpkg": "./lib/umd/moroxel8ai.min.js",
+    "jsdelivr": "./lib/umd/moroxel8ai.min.js",
+    "types": "./lib/es/index.d.ts",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build --config vite.config.lib.js && tsc && vite build",
+        "preview": "vite preview",
+        "prepublish": "npm run build"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/moroboxai/moroxel8ai.git"
+    },
+    "keywords": [],
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/moroboxai/moroxel8ai/issues"
+    },
+    "homepage": "https://github.com/moroboxai/moroxel8ai#readme",
+    "dependencies": {
+        "fengari": "^0.1.4",
+        "moroxel8ai-sdk": "^0.1.0-alpha.7",
+        "piximoroxel8ai": "^0.1.0-alpha.8",
+        "moroboxai-game-sdk": "^0.1.0-alpha.29"
+    },
+    "devDependencies": {
+        "@types/node": "^20.6.0",
+        "path": "^0.12.7",
+        "typescript": "^4.6.3",
+        "vite": "^2.8.6"
+    }
 }
