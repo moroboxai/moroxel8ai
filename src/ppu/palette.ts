@@ -1,21 +1,21 @@
-import * as PIXI from 'pixi.js';
+import * as PIXI from "pixi.js";
 
 function hash(r: number, g: number, b: number, a: number): number {
     return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
-function numberToColor(v: number): { r: number, g: number, b: number } {
+function numberToColor(v: number): { r: number; g: number; b: number } {
     return {
-        r: ((v >> 16) & 0xFF),
-        g: ((v >> 8) & 0xFF),
-        b: v & 0xFF
-    }
+        r: (v >> 16) & 0xff,
+        g: (v >> 8) & 0xff,
+        b: v & 0xff
+    };
 }
 
 export class Palette {
     private _capacity: number;
     private _colors: Uint8Array;
-    private _idByColor: {[key: number]: number} = {};
+    private _idByColor: { [key: number]: number } = {};
     private _index: number = 0;
     private _texture: PIXI.Texture;
 
@@ -43,7 +43,9 @@ export class Palette {
         return this._index;
     }
 
-    color(index: number): {r: number, g: number, b: number, a: number} | undefined {
+    color(
+        index: number
+    ): { r: number; g: number; b: number; a: number } | undefined {
         if (index < 0 || index >= this._index) {
             return undefined;
         }
@@ -70,7 +72,7 @@ export class Palette {
             r = rgb.r;
             g = rgb.g;
             b = rgb.b;
-            a = 0xFF;
+            a = 0xff;
         }
 
         const color = hash(r, g, b, a);
@@ -90,7 +92,7 @@ export class Palette {
             r = rgb.r;
             g = rgb.g;
             b = rgb.b;
-            a = 0xFF;
+            a = 0xff;
         }
 
         const color = hash(r, g, b, a);
@@ -134,18 +136,29 @@ export class IndexedTexture {
 
 /**
  * Index colors on a texture.
+ * @param {PIXI} pixi - pixi.js
  * @param {PIXI.Renderer} renderer - app renderer
  * @param {Palette} palette - palette to use/fill
  * @param {PIXI.Texture} texture - texture to index
  * @returns {IndexedTexture} a texture with indexed colors
  */
-export function palettize(renderer: PIXI.Renderer, palette: Palette, texture: PIXI.Texture): IndexedTexture {
-    const colors = renderer.extract.pixels(new PIXI.Sprite(texture));
+export function palettize(
+    pixi: typeof PIXI,
+    renderer: PIXI.Renderer,
+    palette: Palette,
+    texture: PIXI.Texture
+): IndexedTexture {
+    const colors = renderer.extract.pixels(new pixi.Sprite(texture));
     let index: number = 0;
     let indices = new Set();
     for (let i = 0, i2 = 0; i < texture.width; ++i) {
         for (let j = 0; j < texture.height; ++j, i2 += 4) {
-            index = palette.push(colors[i2], colors[i2 + 1], colors[i2 + 2], colors[i2 + 3]);
+            index = palette.push(
+                colors[i2],
+                colors[i2 + 1],
+                colors[i2 + 2],
+                colors[i2 + 3]
+            );
             indices.add(index);
             colors[i2] = 0;
             colors[i2 + 1] = 0;
@@ -153,32 +166,26 @@ export function palettize(renderer: PIXI.Renderer, palette: Palette, texture: PI
             colors[i2 + 3] = 255;
         }
     }
-    const tex = PIXI.Texture.fromBuffer(colors, texture.width, texture.height);
+    const tex = pixi.Texture.fromBuffer(colors, texture.width, texture.height);
     tex.update();
     return new IndexedTexture(tex, indices.size);
 }
 
-const fragment = 'precision mediump float;' +
+const fragment =
+    "precision mediump float;" +
+    "varying vec2 vTextureCoord;" +
+    "uniform sampler2D uSampler;" +
+    "uniform sampler2D colors;" +
+    "uniform float numColors;" +
+    "void main(void)" +
+    "{" +
+    "   vec4 col = texture2D(uSampler, vTextureCoord);" +
+    "   gl_FragColor = texture2D(colors, vec2((col.b * 256.0) / numColors, 0.0));" +
+    "}";
 
-'varying vec2 vTextureCoord;' +
-
-'uniform sampler2D uSampler;' +
-
-'uniform sampler2D colors;' +
-
-'uniform float numColors;' +
-
-'void main(void)' +
-'{' +
-'   vec4 col = texture2D(uSampler, vTextureCoord);' +
-'   gl_FragColor = texture2D(colors, vec2((col.b * 256.0) / numColors, 0.0));' + 
-'}';
-
-export class PaletteColorFilter extends PIXI.Filter
-{
-    constructor(palette: Palette)
-    {
-        super('', fragment);
+export class PaletteColorFilter extends PIXI.Filter {
+    constructor(palette: Palette) {
+        super("", fragment);
         this.setPalette(palette);
     }
 

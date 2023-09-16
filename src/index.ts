@@ -6,8 +6,6 @@ import { PPU, AssetHeader, FontHeader, TileMapHeader } from "./ppu";
 
 export const VERSION = "0.1.0-alpha.8";
 
-const PHYSICS_TIMESTEP = 0.01;
-
 interface ExtendedGameHeader extends MoroboxAIGameSDK.GameHeader {
     assets?: AssetHeader[];
     main?: string;
@@ -65,12 +63,14 @@ function loadMain(
 
 /**
  * Load a list of assets from the game server.
+ * @param {Moroxel8AI} vm - vm instance
  * @param {AssetHeader[]} assets - list of assets to load
  * @param {MoroboxAIGameSDK.IGameServer} gameServer - game server for accessing files
  * @param {function} assetLoaded - function called for each loaded asset
  * @returns {Promise} - a promise
  */
 function loadAssets(
+    vm: Moroxel8AI,
     assets: AssetHeader[] | undefined,
     gameServer: MoroboxAIGameSDK.IGameServer,
     assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void
@@ -83,7 +83,7 @@ function loadAssets(
         }
 
         console.log("loading assets...");
-        const loader = new PIXI.Loader();
+        const loader = new vm.PIXI.Loader();
 
         // add each asset to the loader
         const validAssets = new Array<AssetHeader>();
@@ -113,7 +113,7 @@ function loadAssets(
             });
 
             console.log("assets loaded");
-            resolve();
+            return resolve();
         });
         loader.load();
     });
@@ -121,11 +121,13 @@ function loadAssets(
 
 /**
  * Load and initialize the game.
+ * @param {Moroxel8AI} vm - vm instance
  * @param {MoroboxAIGameSDK.IPlayer} player - player instance
  * @param {Function} assetLoaded - function called for each loaded asset
  * @returns {Promise} - content of the main script
  */
 function initGame(
+    vm: Moroxel8AI,
     player: MoroboxAIGameSDK.IPlayer,
     assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void
 ): Promise<GameScript> {
@@ -134,6 +136,7 @@ function initGame(
 
         return loadMain(header, player.gameServer).then((data) => {
             return loadAssets(
+                vm,
                 header.assets,
                 player.gameServer,
                 assetLoaded
@@ -142,47 +145,28 @@ function initGame(
     });
 }
 
-class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
-    private _player: MoroboxAIGameSDK.IPlayer;
+class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
+    // Instance of PixiMoroxel8AI
+    private _pixiMoroxel8AI?: PixiMoroxel8AI.IPixiMoroxel8AI;
     // Main Lua script of the game
     private _gameScript?: GameScript;
-    // VM
+    // Instance of VM running the game script
     private _vm?: IVM;
-
-    private _app: PIXI.Application;
-    private _ticker = (delta: number) => this._tick(delta);
     // If the game has been attached and is playing
-    private _isPlaying: boolean = false;
-    private _displayedTickError: boolean = false;
-    private _physicsAccumulator: number = 0;
     private _ppu!: PPU;
+    // Last received inputs
+    private _inputs?: MoroboxAIGameSDK.IInputs[];
 
-    constructor(player: MoroboxAIGameSDK.IPlayer) {
-        this._player = player;
-        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
+    get pixiMoroxel8AI(): PixiMoroxel8AI.IPixiMoroxel8AI {
+        return this._pixiMoroxel8AI!;
+    }
 
-        this._app = new PIXI.Application({
-            backgroundColor: 0x0,
-            resolution: window.devicePixelRatio || 1,
-            width: this._player.width,
-            height: this._player.height,
-            clearBeforeRender: false,
-            antialias: false
-        });
+    get PIXI(): typeof PIXI {
+        return this._pixiMoroxel8AI!.PIXI;
+    }
 
-        this._ppu = new PPU(this._app.renderer);
-
-        // init the game and load assets
-        initGame(player, (asset, res) =>
-            this._handleAssetLoaded(asset, res)
-        ).then((data) => {
-            // received the game script
-            this._gameScript = data;
-            this._initPixiJS();
-
-            // calling ready will call play
-            player.ready();
-        });
+    get player(): MoroboxAIGameSDK.IPlayer {
+        return this._pixiMoroxel8AI!.player;
     }
 
     _handleAssetLoaded(asset: AssetHeader, res: PIXI.LoaderResource) {
@@ -193,99 +177,59 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
         }
     }
 
-    /**
-     * Initialize the PixiJS application.
-     */
-    _initPixiJS() {
-        // attach PIXI view to root HTML element
-        this._player.root.appendChild(this._app.view);
+    // IGame interface
+    init(pixiMoroxel8AI: PixiMoroxel8AI.IPixiMoroxel8AI): void {
+        this._pixiMoroxel8AI = pixiMoroxel8AI;
+        pixiMoroxel8AI.autoClearBackBuffer = false;
+        this._ppu = new PPU(
+            pixiMoroxel8AI.PIXI,
+            pixiMoroxel8AI.renderer,
+            pixiMoroxel8AI.backBuffer
+        );
     }
 
-    // Physics loop
-    private _update(deltaTime: number) {
-        if (this._vm === undefined) return;
+    load(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            // init the game and load assets
+            initGame(this, this.player, (asset, res) =>
+                this._handleAssetLoaded(asset, res)
+            ).then((data) => {
+                // received the game script
+                this._gameScript = data;
 
-        try {
-            this._vm.tick(deltaTime);
-        } catch (e) {
-            if (!this._displayedTickError) {
-                this._displayedTickError = true;
-                console.error(e);
-            }
-        }
+                // initialize the VM for game script
+                this._vm = initVM(data.language, data.script, this);
+                if (this._vm === undefined) {
+                    console.error(
+                        "failed to create the VM, see errors in console"
+                    );
+                    return reject();
+                }
+                return resolve();
+            });
+        });
     }
 
-    private _tick(delta: number) {
-        this._ppu.drawEnabled = false;
+    saveState(): object {
+        return {};
+    }
 
-        this._physicsAccumulator += delta * this._player.speed;
-        while (this._physicsAccumulator > PHYSICS_TIMESTEP) {
-            this._update(PHYSICS_TIMESTEP);
-            this._physicsAccumulator -= PHYSICS_TIMESTEP;
+    loadState(state: object): void {}
+
+    getStateForAgent(): object {
+        return {};
+    }
+
+    tick(inputs: MoroboxAIGameSDK.IInputs[], delta: number): void {
+        if (this._vm === undefined) {
+            return;
         }
 
         this._ppu.drawEnabled = true;
         this._ppu.preRender();
-        this._update(PHYSICS_TIMESTEP);
+        this._inputs = inputs;
+        this._vm.tick(delta);
         this._ppu.postRender();
-    }
-
-    // IGame interface
-    speed: number = 1;
-
-    help(): string {
-        return "";
-    }
-
-    play(): void {
-        if (this._app === undefined || this._isPlaying) {
-            return;
-        }
-
-        this._isPlaying = true;
-        this._displayedTickError = false;
-
-        this._vm = initVM(
-            this._gameScript!.language,
-            this._gameScript?.script,
-            this
-        );
-        if (this._vm === undefined) {
-            console.error("failed to create the Lua VM, see errors in console");
-            return;
-        }
-
-        this.resize();
-
-        // register the tick function
-        this._ticker = (delta: number) => this._tick(delta);
-        this._app.ticker.add(this._ticker);
-    }
-
-    pause(): void {
-        if (this._app !== undefined) {
-            this._app.ticker.remove(this._ticker);
-        }
-    }
-
-    stop(): void {
-        this._app.destroy(true, {
-            children: true,
-            texture: true,
-            baseTexture: true
-        });
-    }
-
-    resize(): void {
-        // Scale the game view according to parent div
-        const realWidth = this._player.width;
-        const realHeight = this._player.height;
-
-        this._app.renderer.resize(realWidth, realHeight);
-        this._ppu.sprite.scale.set(
-            realWidth / this.SWIDTH,
-            realHeight / this.SHEIGHT
-        );
     }
 
     // IMoroxel8AI interface
@@ -323,45 +267,21 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
 
     state(val: any): void;
     state(pid: number, val: any): void;
-    state(pid: any | number, val?: any): void {
-        this._player.sendState(
-            val === undefined ? pid : val,
-            val === undefined ? undefined : pid
-        );
-    }
+    state(pid: any | number, val?: any): void {}
 
     btn(bid: number): boolean;
     btn(pid: number, bid: number): boolean;
     btn(pid: number, bid?: number): boolean {
-        if (bid === undefined) {
-            bid = pid;
-            pid = this.P1;
-        }
-
-        const controller = this._player.controller(pid);
-        if (controller === undefined) return false;
-
-        switch (bid) {
-            case this.BLEFT:
-                return controller.inputs().left === true;
-            case this.BRIGHT:
-                return controller.inputs().right === true;
-            case this.BUP:
-                return controller.inputs().up === true;
-            case this.BDOWN:
-                return controller.inputs().down === true;
-            default:
-                return false;
-        }
+        return false;
     }
 
     pbound(pid: number): boolean {
-        const player = this._player.controller(pid);
+        const player = this.player.getController(pid);
         return player === undefined ? false : player.isBound;
     }
 
     plabel(pid: number): string {
-        const player = this._player.controller(pid);
+        const player = this.player.getController(pid);
         return player === undefined ? "" : player.label;
     }
 
@@ -436,40 +356,8 @@ class Moroxel8AI implements MoroboxAIGameSDK.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 }
 
-/**
- * Act as a game for PixiMoroxel8AI.
- */
-class Game implements MoroboxAIGameSDK.IGame {
-    help(): string {
-        throw new Error("Method not implemented.");
-    }
-    play(): void {
-        throw new Error("Method not implemented.");
-    }
-    pause(): void {
-        throw new Error("Method not implemented.");
-    }
-    stop(): void {
-        throw new Error("Method not implemented.");
-    }
-    resize(): void {
-        throw new Error("Method not implemented.");
-    }
-    saveState(): object {
-        throw new Error("Method not implemented.");
-    }
-    loadState(state: object): void {
-        throw new Error("Method not implemented.");
-    }
-    getStateForAgent(): object {
-        throw new Error("Method not implemented.");
-    }
-    ticker?: ((delta: number) => void) | undefined;
-    tick(inputs: MoroboxAIGameSDK.IInputs[], delta: number): void {
-        throw new Error("Method not implemented.");
-    }
-}
-
-export const boot: MoroboxAIGameSDK.IBoot = (player) => {
-    return PixiMoroxel8AI.boot(player);
+export const boot: MoroboxAIGameSDK.IBoot = (
+    player: MoroboxAIGameSDK.IPlayer
+) => {
+    return PixiMoroxel8AI.init({ player, game: new Moroxel8AI() });
 };

@@ -1,29 +1,33 @@
-import * as constants from '../constants';
-import * as PIXI from 'pixi.js';
-import { FontHeader, TileMapHeader } from './header';
-import { TileMap } from './tilemap';
-import { PaletteColorFilter, Palette, palettize } from './palette';
-import { NineSliceTexture, NineSliceSprite } from './nineslice';
-import { RetroColorFilter } from './retrocolor';
-export * from './header';
+import * as PIXI from "pixi.js";
+import * as constants from "../constants";
+import { FontHeader, TileMapHeader } from "./header";
+import { TileMap } from "./tilemap";
+import { PaletteColorFilter, Palette, palettize } from "./palette";
+import { NineSliceTexture, NineSliceSprite } from "./nineslice";
+import { RetroColorFilter } from "./retrocolor";
+export * from "./header";
 
 function clamp(v: number, a: number, b: number): number {
     return Math.max(Math.min(v, b), a);
 }
 
 class OAMText {
+    private _pixi: typeof PIXI;
     private _text: PIXI.BitmapText | undefined;
     alignX: number = 0;
     alignY: number = 0;
 
-    constructor() {
+    constructor(pixi: typeof PIXI) {
+        this._pixi = pixi;
     }
 
     get text(): PIXI.BitmapText {
         if (this._text === undefined) {
-            this._text = new PIXI.BitmapText("", {fontName: constants.DEFAULT_FONT});
+            this._text = new this._pixi.BitmapText("", {
+                fontName: constants.DEFAULT_FONT
+            });
         }
-        
+
         return this._text;
     }
 
@@ -58,7 +62,7 @@ class OAMText {
     clear(): void {
         this.text.fontName = constants.DEFAULT_FONT;
         this.text.position.set(0, 0);
-        this.text.tint = 0xFFFFFF;
+        this.text.tint = 0xffffff;
         this.alignX = 0;
         this.alignY = 0;
     }
@@ -71,8 +75,8 @@ class OAMSprite {
     private _scaleh: number = 1;
     private _scalev: number = 1;
 
-    constructor() {
-        this.sprite = new PIXI.Sprite();
+    constructor(pixi: typeof PIXI) {
+        this.sprite = new pixi.Sprite();
         this.clear();
     }
 
@@ -169,31 +173,16 @@ class OAMSprite {
     }
 }
 
-// RenderTexture used to render the game offscreen
-class BackBuffer {
-    public buffer: PIXI.RenderTexture;
-    public sprite: PIXI.Sprite;
-
-    constructor(width: number, height: number) {
-        this.buffer = PIXI.RenderTexture.create({ width, height });
-        this.sprite = new PIXI.Sprite(this.buffer);
-        this.sprite.pivot.set(0, 0);
-        this.sprite.position.set(0, 0);
-    }
-
-    postRender(): void {
-
-    }
-}
-
-export class PPU extends BackBuffer {
+export class PPU {
     SWIDTH: number = constants.SCREEN_WIDTH;
     SHEIGHT: number = constants.SCREEN_WIDTH;
     TNUM: number = 64;
     SNUM: number = constants.NUM_SPRITES;
 
     // Buffer where the game will be rendered
+    private _pixi: typeof PIXI;
     private _renderer: PIXI.Renderer;
+    private _backBuffer: PIXI.RenderTexture;
     private _clearSprite: PIXI.Sprite;
     private _fonts: FontHeader[];
     private _tilemaps: TileMap[];
@@ -206,25 +195,29 @@ export class PPU extends BackBuffer {
     private _cameraX: number = 0;
     private _cameraY: number = 0;
     private _tilemapMode: number = constants.TILEMAP_RESOLUTION;
-    drawEnabled: boolean; 
+    drawEnabled: boolean;
 
-    constructor(renderer: PIXI.Renderer) {
-        super(constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT);
+    constructor(
+        pixi: typeof PIXI,
+        renderer: PIXI.Renderer,
+        backBuffer: PIXI.RenderTexture
+    ) {
+        this._pixi = pixi;
         this._renderer = renderer;
-        this.sprite.position.set(0, 0);
+        this._backBuffer = backBuffer;
 
         this._paletteFilter = new PaletteColorFilter(this._palette);
 
         this._fonts = new Array<FontHeader>();
         this._tilemaps = new Array<TileMap>();
 
-        this._text = new OAMText();
-        this._sprite = new OAMSprite();
+        this._text = new OAMText(pixi);
+        this._sprite = new OAMSprite(pixi);
         this._sprite.sprite.filters = [this._paletteFilter];
-        this._boxSprite = new NineSliceSprite();
+        this._boxSprite = new NineSliceSprite(pixi);
         this._boxSprite.sprite.filters = [this._paletteFilter];
 
-        this._clearSprite = new PIXI.Sprite(PIXI.Texture.WHITE);
+        this._clearSprite = new pixi.Sprite(PIXI.Texture.WHITE);
         this._clearSprite.width = constants.SCREEN_WIDTH;
         this._clearSprite.height = constants.SCREEN_HEIGHT;
         this._clearSprite.tint = 0;
@@ -233,13 +226,9 @@ export class PPU extends BackBuffer {
         this.drawEnabled = true;
     }
 
-    preRender(): void {
-
-    }
+    preRender(): void {}
 
     postRender(): void {
-        super.postRender();
-        this._renderer.render(this.sprite);
         this._spriteIndex = 0;
     }
 
@@ -249,22 +238,33 @@ export class PPU extends BackBuffer {
     }
 
     addTileMap(asset: TileMapHeader, texture: PIXI.Texture): void {
-        const tex = palettize(this._renderer, this._palette, texture);
+        const tex = palettize(
+            this._pixi,
+            this._renderer,
+            this._palette,
+            texture
+        );
         this._palette.update();
         console.log(`indexed ${asset.path} with ${tex.numColors} colors`);
         this._paletteFilter.setPalette(this._palette);
-        const tilemap = TileMap.from(asset, tex);
+        const tilemap = TileMap.from(this._pixi, asset, tex);
         if (tilemap !== undefined) {
             this._tilemaps.push(tilemap);
         }
     }
 
-    private _getTile(id: number, i: number, j: number, w?: number, h?: number): PIXI.Texture {
+    private _getTile(
+        id: number,
+        i: number,
+        j: number,
+        w?: number,
+        h?: number
+    ): PIXI.Texture {
         if (id >= 0 && id < this._tilemaps.length) {
             return this._tilemaps[id].getTile(i, j, w, h, this._tilemapMode);
         }
 
-        return PIXI.Texture.EMPTY;
+        return this._pixi.Texture.EMPTY;
     }
 
     private _getColorIndex(c: number): number {
@@ -280,12 +280,12 @@ export class PPU extends BackBuffer {
         if (!this.drawEnabled) return;
 
         this._clearSprite.tint = this._getColorIndex(c);
-        this._renderer.render(this._clearSprite, this.buffer);
+        this._renderer.render(this._clearSprite, this._backBuffer);
     }
 
     camera(x: number, y: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._cameraX = x - this.SWIDTH / 2;
         this._cameraY = y - this.SHEIGHT / 2;
     }
@@ -301,7 +301,7 @@ export class PPU extends BackBuffer {
     }
 
     tmode(val: number): void {
-        switch(val) {
+        switch (val) {
             case 8:
             case 16:
             case 24:
@@ -319,46 +319,46 @@ export class PPU extends BackBuffer {
 
     stile(id: number, i: number, j: number, w?: number, h?: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._sprite.texture = this._getTile(id, i, j, w, h);
     }
 
     sorigin(x: number, y: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._sprite.originx = x;
         this._sprite.originy = y;
     }
 
     sflip(h: boolean, v: boolean): void {
         if (!this.drawEnabled) return;
-        
+
         this._sprite.fliph = h;
         this._sprite.flipv = v;
     }
 
     sscale(x: number, y: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._sprite.scaleh = x;
         this._sprite.scalev = y;
     }
 
     srot(a: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._sprite.angle = a;
     }
 
     sclear(): void {
         if (!this.drawEnabled) return;
-        
+
         this._sprite.clear();
     }
 
     private _render(sprite: PIXI.Sprite): void {
         if (this._spriteIndex < constants.NUM_SPRITES) {
-            this._renderer.render(sprite, this.buffer);
+            this._renderer.render(sprite, this._backBuffer);
             this._spriteIndex += 1;
         }
     }
@@ -374,8 +374,19 @@ export class PPU extends BackBuffer {
     sbox(x: number, y: number, w: number, h: number): void {
         if (!this.drawEnabled) return;
 
-        this._boxSprite.texture = new NineSliceTexture(this._sprite.sprite.texture);
-        this._spriteIndex += this._boxSprite.render(x, y, w, h, this._renderer, this.buffer, constants.NUM_SPRITES - this._spriteIndex);
+        this._boxSprite.texture = new NineSliceTexture(
+            this._pixi,
+            this._sprite.sprite.texture
+        );
+        this._spriteIndex += this._boxSprite.render(
+            x,
+            y,
+            w,
+            h,
+            this._renderer,
+            this._backBuffer,
+            constants.NUM_SPRITES - this._spriteIndex
+        );
     }
 
     fnt(name: string): number {
@@ -390,36 +401,40 @@ export class PPU extends BackBuffer {
 
     falign(x: number, y: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._text.alignX = x;
         this._text.alignY = y;
     }
 
     fcolor(c: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._text.color = this._getColorIndex(c);
     }
 
     fclear(): void {
         if (!this.drawEnabled) return;
-        
+
         this._text.clear();
     }
 
     fdraw(id: number, text: string, x: number, y: number): void {
         if (!this.drawEnabled) return;
-        
+
         this._text.x = x;
         this._text.y = y;
 
         if (id >= 0 && id < this._fonts.length) {
             this._text.font = this._fonts[id].name!;
             this._text.value = text;
-            this._text.x -= Math.floor(this._text.text.textWidth * this._text.alignX);
-            this._text.y -= Math.floor(this._text.text.textHeight * this._text.alignY);
+            this._text.x -= Math.floor(
+                this._text.text.textWidth * this._text.alignX
+            );
+            this._text.y -= Math.floor(
+                this._text.text.textHeight * this._text.alignY
+            );
             this._text.text.filters = [this._paletteFilter];
-            this._renderer.render(this._text.text, this.buffer);
+            this._renderer.render(this._text.text, this._backBuffer);
         }
     }
 }

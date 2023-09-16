@@ -44,10 +44,16 @@
                     id="moroboxai-editor-web-version"
                 ></span>
             </div>
+            <div>moroxel8ai v<span id="moroxel8ai-version"></span></div>
         </div>
     </body>
     <script type="module">
+        window.process = process;
+
         import * as Moroxel8AI from "./src/index.ts";
+
+        // Hack for MoroboxAIPlayer to detect Moroxel8AI
+        window.Moroxel8AI = Moroxel8AI;
 
         document.getElementById("moroboxai-game-sdk-version").innerText =
             MoroboxAIPlayer.GAME_SDK_VERSION;
@@ -59,10 +65,12 @@
             MoroboxAIEditor.SDK_VERSION;
         document.getElementById("moroboxai-editor-web-version").innerText =
             MoroboxAIEditor.VERSION;
+        document.getElementById("moroxel8ai-version").innerText =
+            Moroxel8AI.VERSION;
 
         const player = MoroboxAIPlayer.init(document.getElementById("player"), {
             // Replace with URL to your header.yml
-            url: "./sample/header.yml",
+            url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/pong/header.yml",
             resizable: false,
             autoPlay: true,
             width: 256,
