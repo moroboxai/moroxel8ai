@@ -272,7 +272,31 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     btn(bid: number): boolean;
     btn(pid: number, bid: number): boolean;
     btn(pid: number, bid?: number): boolean {
-        return false;
+        if (this._inputs === undefined) {
+            return false;
+        }
+
+        if (bid === undefined) {
+            bid = pid;
+            pid = this.P1;
+        }
+
+        if (this._inputs.length <= pid) {
+            return false;
+        }
+
+        switch (bid) {
+            case this.BLEFT:
+                return this._inputs[pid].left === true;
+            case this.BRIGHT:
+                return this._inputs[pid].right === true;
+            case this.BUP:
+                return this._inputs[pid].up === true;
+            case this.BDOWN:
+                return this._inputs[pid].down === true;
+            default:
+                return false;
+        }
     }
 
     pbound(pid: number): boolean {
@@ -354,6 +378,8 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     clamp(val: number, min: number, max: number): number {
         return Math.min(Math.max(val, min), max);
     }
+    cos = Math.cos;
+    sin = Math.sin;
 }
 
 export const boot: MoroboxAIGameSDK.IBoot = (

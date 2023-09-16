@@ -95,7 +95,9 @@ export function initJS(
         sign: api.sign.bind(api),
         min: api.min.bind(api),
         max: api.max.bind(api),
-        clamp: api.clamp.bind(api)
+        clamp: api.clamp.bind(api),
+        cos: api.cos.bind(api),
+        sin: api.sin.bind(api)
     };
 
     const params = Object.keys(builtins);
@@ -104,9 +106,9 @@ export function initJS(
         `${script}\n; ${GAME_FUNCTIONS.map(
             (name) =>
                 `if (typeof ${name} !== "undefined") exports.${name} = ${name}`
-        ).join(";")}`,
-        ...params.map((_) => builtins[_])
+        ).join(";")}`
     );
 
+    fun(...params.map((_) => builtins[_]));
     return new JSVM(fun, context);
 }

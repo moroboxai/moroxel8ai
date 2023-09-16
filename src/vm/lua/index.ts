@@ -1,6 +1,12 @@
 import * as Moroxel8AISDK from "moroxel8ai-sdk";
 import { IVM } from "../_utils";
-import { lua_State, lua, lauxlib, to_luastring, to_jsstring } from "fengari";
+import {
+    lua_State,
+    lua,
+    lauxlib,
+    to_luastring,
+    to_jsstring
+} from "fengari-web";
 
 class LuaVM implements IVM {
     private _luaState: lua_State;
@@ -389,6 +395,14 @@ export function initLua(
                     getnumber(luaState, 3)
                 )
             );
+            return 1;
+        }),
+        cos: func(luaState, "cos(val)", 1, () => {
+            pushnumber(luaState, api.cos(getnumber(luaState, 1)));
+            return 1;
+        }),
+        sin: func(luaState, "sin(val)", 1, () => {
+            pushnumber(luaState, api.sin(getnumber(luaState, 1)));
             return 1;
         })
     };
