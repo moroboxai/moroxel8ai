@@ -1,6 +1,6 @@
 {
     "name": "moroxel8ai",
-    "version": "0.1.0-alpha.10",
+    "version": "0.1.0-alpha.11",
     "description": "Fantasy 8-bit CPU for MoroboxAI",
     "author": "moroboxai",
     "main": "./lib/cjs/index.cjs",
