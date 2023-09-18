@@ -6,7 +6,7 @@ import {
     lauxlib,
     to_luastring,
     to_jsstring
-} from "fengari-web";
+} from "fengari";
 
 class LuaVM implements IVM {
     private _luaState: lua_State;

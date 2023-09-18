@@ -7,14 +7,18 @@
         "noImplicitAny": true,
         "moduleResolution": "node",
         "sourceMap": true,
-        "outDir": "lib/es",
+        "outDir": "lib",
         "baseUrl": ".",
         "declaration": true,
         "strict": true,
         "stripInternal": true,
-        "lib": ["es5", "es6", "dom"],
+        "lib": [
+            "es5",
+            "es6",
+            "dom"
+        ],
         "paths": {
-            "fengari-web": ["typings/fengari"],
+            "fengari": ["typings/fengari"],
             "*": [
                 "node_modules/*"
             ]
