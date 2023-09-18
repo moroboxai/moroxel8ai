@@ -17,8 +17,5 @@ export default defineConfig({
                 }
             }
         }
-    },
-    define: {
-        "process.env": void 0
     }
 });

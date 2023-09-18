@@ -4,7 +4,7 @@ import * as PixiMoroxel8AI from "piximoroxel8ai";
 import { IVM, initVM } from "./vm";
 import { PPU, AssetHeader, FontHeader, TileMapHeader } from "./ppu";
 
-export const VERSION = "0.1.0-alpha.15";
+export const VERSION = "0.1.0-alpha.16";
 
 interface ExtendedGameHeader extends MoroboxAIGameSDK.GameHeader {
     assets?: AssetHeader[];
