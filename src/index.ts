@@ -4,7 +4,7 @@ import * as PixiMoroxel8AI from "piximoroxel8ai";
 import { IVM, initVM } from "./vm";
 import { PPU, AssetHeader, FontHeader, TileMapHeader } from "./ppu";
 
-export const VERSION = "0.1.0-alpha.8";
+export const VERSION = "0.1.0-alpha.9";
 
 interface ExtendedGameHeader extends MoroboxAIGameSDK.GameHeader {
     assets?: AssetHeader[];
@@ -220,12 +220,12 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
         return {};
     }
 
-    tick(inputs: MoroboxAIGameSDK.IInputs[], delta: number): void {
+    tick(inputs: MoroboxAIGameSDK.IInputs[], delta: number, render: boolean): void {
         if (this._vm === undefined) {
             return;
         }
 
-        this._ppu.drawEnabled = true;
+        this._ppu.drawEnabled = render;
         this._ppu.preRender();
         this._inputs = inputs;
         this._vm.tick(delta);
