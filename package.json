@@ -1,6 +1,6 @@
 {
     "name": "moroxel8ai",
-    "version": "0.1.0-alpha.12",
+    "version": "0.1.0-alpha.13",
     "description": "Fantasy 8-bit CPU for MoroboxAI",
     "author": "moroboxai",
     "main": "./lib/cjs/index.cjs",
@@ -10,7 +10,7 @@
     "types": "./lib/index.d.ts",
     "scripts": {
         "dev": "vite",
-        "build": "vite build && gulp build",
+        "build": "gulp build",
         "preview": "vite preview",
         "prepublish": "npm run build"
     },
