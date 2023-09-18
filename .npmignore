@@ -1,6 +1,6 @@
 index.html
 sample/
-lib/
+dist/
 
 .DS_Store
 npm-debug.log
