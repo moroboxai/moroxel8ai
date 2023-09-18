@@ -10,7 +10,7 @@
     "types": "./lib/index.d.ts",
     "scripts": {
         "dev": "vite",
-        "build": "gulp build",
+        "build": "vite build && gulp build",
         "preview": "vite preview",
         "prepublish": "npm run build"
     },
