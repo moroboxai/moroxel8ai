@@ -69,10 +69,8 @@
         const player = MoroboxAIPlayer.init(document.getElementById("player"), {
             // Replace with URL to your header.yml
             url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/pong/header.yml",
-            resizable: false,
+            resizable: true,
             autoPlay: true,
-            width: 256,
-            height: 256,
             onReady: () => console.log("ready")
         });
 
@@ -114,8 +112,6 @@
         #player {
             background-color: black;
             background-size: cover;
-            width: 256px;
-            height: 256px;
             margin-left: 10em;
             margin-right: 2em;
         }

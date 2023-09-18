@@ -1,6 +1,6 @@
 {
     "name": "moroxel8ai",
-    "version": "0.1.0-alpha.9",
+    "version": "0.1.0-alpha.10",
     "description": "Fantasy 8-bit CPU for MoroboxAI",
     "author": "moroboxai",
     "main": "./lib/cjs/index.cjs",
@@ -26,9 +26,9 @@
     "homepage": "https://github.com/moroboxai/moroxel8ai#readme",
     "dependencies": {
         "fengari-web": "^0.1.4",
-        "moroboxai-game-sdk": "^0.1.0-alpha.32",
+        "moroboxai-game-sdk": "^0.1.0-alpha.35",
         "moroxel8ai-sdk": "^0.1.0-alpha.8",
-        "piximoroxel8ai": "^0.1.0-alpha.15"
+        "piximoroxel8ai": "^0.1.0-alpha.20"
     },
     "devDependencies": {
         "@types/node": "^20.6.2",
