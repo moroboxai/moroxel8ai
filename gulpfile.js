@@ -17,6 +17,17 @@ const webpackConfig = (lib, output, options, library, prod) => ({
             test: /\.tsx?$/,
             use: 'ts-loader',
             exclude: /node_modules/
+        },
+        {
+            test: [/\.js$/],
+            loader: 'babel-loader',
+            options: {
+                presets: [['@babel/preset-env', {
+                    "targets": {
+                        "browsers": ["last 2 versions", "not safari <= 7", "not ie <= 10"]
+                    }
+                }]]
+            }
         }]
     },
     output: {
