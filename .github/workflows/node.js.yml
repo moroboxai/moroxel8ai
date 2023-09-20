@@ -60,7 +60,7 @@ jobs:
           name: web
           path: build/web
       - name: Install rsync 📚
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         uses: GuillaumeFalourd/setup-rsync@v1.1
       - name: Deploy to GitHub Pages 🚀
         if: github.ref == 'refs/heads/master'
