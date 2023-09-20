@@ -1,16 +1,6 @@
 <html>
     <head>
         <title>Moroxel8AI Sample</title>
-        <!-- For the player -->
-        <script
-            type="text/javascript"
-            src="https://cdn.jsdelivr.net/npm/moroboxai-player-web@latest/lib/umd/moroboxai-player-web.min.js"
-        ></script>
-        <!-- For the editor -->
-        <script
-            type="text/javascript"
-            src="https://cdn.jsdelivr.net/npm/moroboxai-editor-web@latest/lib/umd/moroboxai-editor-web.min.js"
-        ></script>
     </head>
 
     <body class="vertical">
@@ -18,15 +8,10 @@
             <div id="player"></div>
             <div id="editor"></div>
         </div>
-        <div id="info">
+        <div class="info">
             <div>
                 moroboxai-game-sdk v<span
                     id="moroboxai-game-sdk-version"
-                ></span>
-            </div>
-            <div>
-                moroboxai-player-sdk v<span
-                    id="moroboxai-player-sdk-version"
                 ></span>
             </div>
             <div>
@@ -35,19 +20,15 @@
                 ></span>
             </div>
             <div>
-                moroboxai-editor-sdk v<span
-                    id="moroboxai-editor-sdk-version"
-                ></span>
-            </div>
-            <div>
                 moroboxai-editor-web v<span
                     id="moroboxai-editor-web-version"
                 ></span>
             </div>
-            <div>moroxel8ai v<span id="moroxel8ai-version"></span></div>
         </div>
     </body>
     <script type="module">
+        import * as MoroboxAIPlayer from "moroboxai-player-web";
+        import * as MoroboxAIEditor from "moroboxai-editor-web";
         import * as Moroxel8AI from "./src/index.ts";
 
         // Hack for MoroboxAIPlayer to detect Moroxel8AI
@@ -55,22 +36,17 @@
 
         document.getElementById("moroboxai-game-sdk-version").innerText =
             MoroboxAIPlayer.GAME_SDK_VERSION;
-        document.getElementById("moroboxai-player-sdk-version").innerText =
-            MoroboxAIPlayer.SDK_VERSION;
         document.getElementById("moroboxai-player-web-version").innerText =
             MoroboxAIPlayer.VERSION;
-        document.getElementById("moroboxai-editor-sdk-version").innerText =
-            MoroboxAIEditor.SDK_VERSION;
         document.getElementById("moroboxai-editor-web-version").innerText =
             MoroboxAIEditor.VERSION;
-        document.getElementById("moroxel8ai-version").innerText =
-            Moroxel8AI.VERSION;
 
         const player = MoroboxAIPlayer.init(document.getElementById("player"), {
             // Replace with URL to your header.yml
             url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/pong/header.yml",
             resizable: true,
             autoPlay: true,
+            scale: 1.5,
             onReady: () => console.log("ready")
         });
 
@@ -116,7 +92,7 @@
             margin-right: 2em;
         }
 
-        #info {
+        .info {
             margin-top: 2em;
             text-align: center;
         }

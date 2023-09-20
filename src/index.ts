@@ -4,7 +4,7 @@ import * as PixiMoroxel8AI from "piximoroxel8ai";
 import { IVM, initVM } from "./vm";
 import { PPU, AssetHeader, FontHeader, TileMapHeader } from "./ppu";
 
-export const VERSION = "0.1.0-alpha.16";
+export const VERSION = "__VERSION__";
 
 interface ExtendedGameHeader extends MoroboxAIGameSDK.GameHeader {
     assets?: AssetHeader[];
@@ -184,7 +184,9 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
         this._ppu = new PPU(
             pixiMoroxel8AI.PIXI,
             pixiMoroxel8AI.renderer,
-            pixiMoroxel8AI.backBuffer
+            pixiMoroxel8AI.backBuffer,
+            pixiMoroxel8AI.SWIDTH,
+            pixiMoroxel8AI.SHEIGHT
         );
     }
 
@@ -211,12 +213,24 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 
     saveState(): object {
+        if (this._vm !== undefined) {
+            return this._vm.saveState();
+        }
+
         return {};
     }
 
-    loadState(state: object): void {}
+    loadState(state: object): void {
+        if (this._vm !== undefined) {
+            this._vm.loadState(state);
+        }
+    }
 
     getStateForAgent(): object {
+        if (this._vm !== undefined) {
+            return this._vm.getStateForAgent();
+        }
+
         return {};
     }
 

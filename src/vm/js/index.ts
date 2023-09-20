@@ -11,7 +11,7 @@ class JSVM implements IVM {
     }
 
     saveState(): object {
-        if (this._context.tick !== undefined) {
+        if (this._context.saveState !== undefined) {
             return this._context.saveState();
         }
 
@@ -19,14 +19,14 @@ class JSVM implements IVM {
     }
 
     loadState(state: object): void {
-        if (this._context.tick !== undefined) {
+        if (this._context.loadState !== undefined) {
             this._context.loadState(state);
         }
     }
 
     getStateForAgent(): object {
-        if (this._context.tick !== undefined) {
-            this._context.getStateForAgent();
+        if (this._context.getStateForAgent !== undefined) {
+            return this._context.getStateForAgent();
         }
 
         return {};

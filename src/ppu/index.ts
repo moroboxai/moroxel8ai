@@ -174,8 +174,8 @@ class OAMSprite {
 }
 
 export class PPU {
-    SWIDTH: number = constants.SCREEN_WIDTH;
-    SHEIGHT: number = constants.SCREEN_WIDTH;
+    SWIDTH: number;
+    SHEIGHT: number;
     TNUM: number = 64;
     SNUM: number = constants.NUM_SPRITES;
 
@@ -200,11 +200,15 @@ export class PPU {
     constructor(
         pixi: typeof PIXI,
         renderer: PIXI.Renderer,
-        backBuffer: PIXI.RenderTexture
+        backBuffer: PIXI.RenderTexture,
+        width: number,
+        height: number
     ) {
         this._pixi = pixi;
         this._renderer = renderer;
         this._backBuffer = backBuffer;
+        this.SWIDTH = width;
+        this.SHEIGHT = height;
 
         this._paletteFilter = new PaletteColorFilter(this._palette);
 
@@ -218,8 +222,8 @@ export class PPU {
         this._boxSprite.sprite.filters = [this._paletteFilter];
 
         this._clearSprite = new pixi.Sprite(PIXI.Texture.WHITE);
-        this._clearSprite.width = constants.SCREEN_WIDTH;
-        this._clearSprite.height = constants.SCREEN_HEIGHT;
+        this._clearSprite.width = this.SWIDTH;
+        this._clearSprite.height = this.SHEIGHT;
         this._clearSprite.tint = 0;
         this._clearSprite.filters = [this._paletteFilter];
 
