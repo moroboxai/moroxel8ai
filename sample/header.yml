@@ -1,9 +1,0 @@
-assets:
-    - name: palette
-      path: palette.png
-    - name: tilemap
-      path: tilemap.png
-    - name: MoroboxAIRetro
-      path: MoroboxAIRetro.fnt
-boot: Moroxel8AI
-main: game.js

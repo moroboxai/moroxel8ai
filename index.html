@@ -1,6 +1,7 @@
 <html>
     <head>
         <title>Moroxel8AI Sample</title>
+      <script type="module" crossorigin src="/moroxel8ai/assets/index-3519e4dd.js"></script>
     </head>
 
     <body class="vertical">
@@ -26,43 +27,7 @@
             </div>
         </div>
     </body>
-    <script type="module">
-        import * as MoroboxAIPlayer from "moroboxai-player-web";
-        import * as MoroboxAIEditor from "moroboxai-editor-web";
-        import * as Moroxel8AI from "./src/index.ts";
-
-        // Hack for MoroboxAIPlayer to detect Moroxel8AI
-        window.Moroxel8AI = Moroxel8AI;
-
-        document.getElementById("moroboxai-game-sdk-version").innerText =
-            MoroboxAIPlayer.GAME_SDK_VERSION;
-        document.getElementById("moroboxai-player-web-version").innerText =
-            MoroboxAIPlayer.VERSION;
-        document.getElementById("moroboxai-editor-web-version").innerText =
-            MoroboxAIEditor.VERSION;
-
-        const player = MoroboxAIPlayer.init(document.getElementById("player"), {
-            // Replace with URL to your header.yml
-            url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/pong/header.yml",
-            resizable: true,
-            autoPlay: true,
-            scale: 1.5,
-            onReady: () => console.log("ready")
-        });
-
-        MoroboxAIEditor.init({
-            element: document.getElementById("editor"),
-            url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/piximoroxel8ai-sample/sample/agent.js",
-            width: "500px",
-            height: "400px",
-            onLoad: (language, value) =>
-                player.getController(0).loadAgent({
-                    language: language,
-                    code: value
-                }),
-            onUnload: () => player.getController(0).unloadAgent()
-        });
-    </script>
+    
 
     <style type="text/css">
         body {
