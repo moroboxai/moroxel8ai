@@ -27,13 +27,13 @@
     "homepage": "https://github.com/moroboxai/moroxel8ai#readme",
     "dependencies": {
         "fengari-web": "^0.1.4",
-        "moroboxai-editor-web": "^0.1.1-alpha.6",
         "moroboxai-game-sdk": "^0.1.0-alpha.35",
-        "moroboxai-player-web": "^0.1.0-alpha.34",
         "moroxel8ai-sdk": "^0.1.0-alpha.8",
         "piximoroxel8ai": "^0.1.0-alpha.20"
     },
     "devDependencies": {
+        "moroboxai-editor-web": "^0.1.1-alpha.6",
+        "moroboxai-player-web": "^0.1.0-alpha.34",
         "@types/node": "^20.6.2",
         "path": "^0.12.7",
         "typescript": "^5.2.2",
