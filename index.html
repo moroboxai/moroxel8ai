@@ -10,6 +10,11 @@
         </div>
         <div class="info">
             <div>
+                moroboxai-lua v<span
+                    id="moroboxai-lua-version"
+                ></span>
+            </div>
+            <div>
                 moroboxai-game-sdk v<span
                     id="moroboxai-game-sdk-version"
                 ></span>
@@ -27,6 +32,7 @@
         </div>
     </body>
     <script type="module">
+        import * as MoroboxAILua from "moroboxai-lua";
         import * as MoroboxAIPlayer from "moroboxai-player-web";
         import * as MoroboxAIEditor from "moroboxai-editor-web";
         import * as Moroxel8AI from "./src/index.ts";
@@ -34,6 +40,8 @@
         // Hack for MoroboxAIPlayer to detect Moroxel8AI
         window.Moroxel8AI = Moroxel8AI;
 
+        document.getElementById("moroboxai-lua-version").innerText =
+            MoroboxAILua.VERSION;
         document.getElementById("moroboxai-game-sdk-version").innerText =
             MoroboxAIPlayer.GAME_SDK_VERSION;
         document.getElementById("moroboxai-player-web-version").innerText =
@@ -52,14 +60,17 @@
 
         MoroboxAIEditor.init({
             element: document.getElementById("editor"),
-            url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/piximoroxel8ai-sample/sample/agent.js",
+            language: "lua",
+            url: "https://raw.githubusercontent.com/moroboxai/moroboxai-games/master/pong/agent.*",
             width: "500px",
-            height: "400px",
-            onLoad: (language, value) =>
+            height: "500px",
+            onLoad: (language, value) => {
+                console.log("load agent", language);
                 player.getController(0).loadAgent({
                     language: language,
                     code: value
-                }),
+                });
+            },
             onUnload: () => player.getController(0).unloadAgent()
         });
     </script>

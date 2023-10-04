@@ -28,13 +28,14 @@
     "dependencies": {
         "fengari-web": "^0.1.4",
         "moroboxai-game-sdk": "^0.1.0-alpha.35",
+        "moroboxai-lua": "^0.1.0-alpha.2",
         "moroxel8ai-sdk": "^0.1.0-alpha.8",
         "piximoroxel8ai": "^0.1.0-alpha.20"
     },
     "devDependencies": {
+        "@types/node": "^20.6.2",
         "moroboxai-editor-web": "^0.1.1-alpha.6",
         "moroboxai-player-web": "^0.1.0-alpha.34",
-        "@types/node": "^20.6.2",
         "path": "^0.12.7",
         "typescript": "^5.2.2",
         "vite": "^4.4.9"

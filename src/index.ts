@@ -3,6 +3,8 @@ import * as Moroxel8AISDK from "moroxel8ai-sdk";
 import * as PixiMoroxel8AI from "piximoroxel8ai";
 import { IVM, initVM } from "./vm";
 import { PPU, AssetHeader, FontHeader, TileMapHeader } from "./ppu";
+import type { IMain } from "./plugin";
+export * from "./plugin";
 
 export const VERSION = "__VERSION__";
 
@@ -10,12 +12,12 @@ interface ExtendedGameHeader extends MoroboxAIGameSDK.GameHeader {
     assets?: AssetHeader[];
     main?: string;
     language?: string;
-    script?: string;
+    script?: string | IMain;
 }
 
 interface GameScript {
     language: "javascript" | "lua";
-    script: string;
+    script: string | IMain;
 }
 
 /**
@@ -30,6 +32,13 @@ function loadMain(
 ): Promise<GameScript> {
     return new Promise<GameScript>((resolve, reject) => {
         if (header.script !== undefined) {
+            if (typeof header.script === "function") {
+                return resolve({
+                    language: "javascript",
+                    script: header.script
+                });
+            }
+
             if (header.language === undefined) {
                 return reject("header is missing language attribute");
             }
@@ -148,8 +157,6 @@ function initGame(
 class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     // Instance of PixiMoroxel8AI
     private _pixiMoroxel8AI?: PixiMoroxel8AI.IPixiMoroxel8AI;
-    // Main Lua script of the game
-    private _gameScript?: GameScript;
     // Instance of VM running the game script
     private _vm?: IVM;
     // If the game has been attached and is playing
@@ -196,11 +203,15 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
             initGame(this, this.player, (asset, res) =>
                 this._handleAssetLoaded(asset, res)
             ).then((data) => {
-                // received the game script
-                this._gameScript = data;
-
                 // initialize the VM for game script
-                this._vm = initVM(data.language, data.script, this);
+                if (typeof data.script === "function") {
+                    return data.script(this).then((vm) => {
+                        this._vm = vm;
+                        return resolve();
+                    });
+                } else {
+                    this._vm = initVM(data.language, data.script, this);
+                }
                 if (this._vm === undefined) {
                     console.error(
                         "failed to create the VM, see errors in console"
@@ -213,7 +224,7 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 
     saveState(): object {
-        if (this._vm !== undefined) {
+        if (this._vm?.saveState !== undefined) {
             return this._vm.saveState();
         }
 
@@ -221,21 +232,25 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 
     loadState(state: object): void {
-        if (this._vm !== undefined) {
+        if (this._vm?.loadState !== undefined) {
             this._vm.loadState(state);
         }
     }
 
     getStateForAgent(): object {
-        if (this._vm !== undefined) {
+        if (this._vm?.getStateForAgent !== undefined) {
             return this._vm.getStateForAgent();
         }
 
         return {};
     }
 
-    tick(inputs: MoroboxAIGameSDK.IInputs[], delta: number, render: boolean): void {
-        if (this._vm === undefined) {
+    tick(
+        inputs: MoroboxAIGameSDK.IInputs[],
+        delta: number,
+        render: boolean
+    ): void {
+        if (this._vm?.tick === undefined) {
             return;
         }
 
@@ -394,6 +409,50 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
     cos = Math.cos;
     sin = Math.sin;
+
+    hookAPI(target: any) {
+        target.SWIDTH = this.SWIDTH;
+        target.SHEIGHT = this.SHEIGHT;
+        target.TNUM = this.TNUM;
+        target.SNUM = this.SNUM;
+        target.P1 = this.P1;
+        target.P2 = this.P2;
+        target.BLEFT = this.BLEFT;
+        target.BRIGHT = this.BRIGHT;
+        target.BUP = this.BUP;
+        target.BDOWN = this.BDOWN;
+        target.clear = this.clear.bind(this);
+        target.camera = this.camera.bind(this);
+        target.print = this.print.bind(this);
+        target.state = this.state.bind(this);
+        target.btn = this.btn.bind(this);
+        target.pbound = this.pbound.bind(this);
+        target.plabel = this.plabel.bind(this);
+        target.tmap = this.tmap.bind(this);
+        target.tmode = this.tmode.bind(this);
+        target.stile = this.stile.bind(this);
+        target.sorigin = this.sorigin.bind(this);
+        target.sflip = this.sflip.bind(this);
+        target.sscale = this.sscale.bind(this);
+        target.srot = this.srot.bind(this);
+        target.sclear = this.sclear.bind(this);
+        target.sdraw = this.sdraw.bind(this);
+        target.sbox = this.sbox.bind(this);
+        target.fnt = this.fnt.bind(this);
+        target.falign = this.falign.bind(this);
+        target.fcolor = this.fcolor.bind(this);
+        target.fclear = this.fclear.bind(this);
+        target.fdraw = this.fdraw.bind(this);
+        target.abs = this.abs.bind(this);
+        target.floor = this.floor.bind(this);
+        target.ceil = this.ceil.bind(this);
+        target.sign = this.sign.bind(this);
+        target.min = this.min.bind(this);
+        target.max = this.max.bind(this);
+        target.clamp = this.clamp.bind(this);
+        target.cos = this.cos.bind(this);
+        target.sin = this.sin.bind(this);
+    }
 }
 
 export const boot: MoroboxAIGameSDK.IBoot = (
@@ -401,3 +460,253 @@ export const boot: MoroboxAIGameSDK.IBoot = (
 ) => {
     return PixiMoroxel8AI.init({ player, game: new Moroxel8AI() });
 };
+
+/**
+ * Declare the API for games.
+ */
+declare global {
+    /** Screen width (128) */
+    const SWIDTH: number;
+
+    /** Screen height (128) */
+    const SHEIGHT: number;
+
+    /** Maximum number of tilemaps */
+    const TNUM: number;
+
+    /** Maximum number of sprites */
+    const SNUM: number;
+
+    /** First player */
+    const P1: number;
+
+    /** Second player */
+    const P2: number;
+
+    /** Left button */
+    const BLEFT: number;
+
+    /** Right button */
+    const BRIGHT: number;
+
+    /** Up button */
+    const BUP: number;
+
+    /** Down button */
+    const BDOWN: number;
+
+    /**
+     * Clear the screen.
+     */
+    function clear(): void;
+    function clear(c: number): void;
+
+    /**
+     * Set camera position.
+     *
+     * @param {number} x - x-coordinate
+     * @param {number} y - y-coordinate
+     */
+    function camera(x: number, y: number): void;
+
+    /**
+     * Print a message to the console.
+     * @param {any[]} values - what to print
+     */
+    function print(...values: any[]): void;
+
+    //############
+    // PLAYER API
+    //############
+
+    /**
+     * Send the game state to all players.
+     * @param {any} val - game state
+     */
+    function state(val: any): void;
+
+    /**
+     * Send the game state to selected player.
+     * @param {number} pid - player id
+     * @param {any} val - game state
+     */
+    function state(pid: number, val: any): void;
+
+    /**
+     * Get the state of a button for P1.
+     * @param {number} bid - button id
+     * @returns true if pressed
+     */
+    function btn(bid: number): boolean;
+
+    /**
+     * Get the state of a button.
+     * @param {number} pid - player id
+     * @param {number} bid - button id
+     * @returns true if pressed
+     */
+    function btn(pid: number, bid: number): boolean;
+
+    /**
+     * Get if an AI is bound to a player controller.
+     * @param {number} pid - player id
+     * @returns {boolean} true if AI bound
+     */
+    function pbound(pid: number): boolean;
+
+    /**
+     * Get the label of a player.
+     * @param {number} pid - player id
+     * @returns {string} player label
+     */
+    function plabel(pid: number): string;
+
+    //############
+    // TILEMAP API
+    //############
+
+    /**
+     * Get id of a tilemap identified by a unique name.
+     * @param {string} name - tilemap unique name
+     * @returns {number} tilemap id
+     */
+    function tmap(name: string): number;
+
+    /**
+     * Select map mode (8 | 16 | 32 | 64) pixels.
+     *
+     * This allows mtile to works on 8x8, 16x16, ... tiles.
+     *
+     * @param {number} val - new mode
+     */
+    function tmode(val: number): void;
+
+    //###########
+    // SPRITE API
+    //###########
+
+    /**
+     * Set the tile for next sprite.
+     * @param {number} id - tilemap id
+     * @param {number} i - tile position
+     * @param {number} j - tile position
+     * @param {number} w - tile width
+     * @param {number} h - tile height
+     */
+    function stile(
+        id: number,
+        i: number,
+        j: number,
+        w?: number,
+        h?: number
+    ): void;
+
+    /**
+     * Set the origin attribute of next sprite.
+     * @param {number} x - x-coordinate
+     * @param {number} y - y-coordinate
+     */
+    function sorigin(x: number, y: number): void;
+
+    /**
+     * Set the flips attributes of next sprite.
+     * @param {number} h - horizontal flip
+     * @param {number} v - vertical flip
+     */
+    function sflip(h: boolean, v: boolean): void;
+
+    /**
+     * Set the scales attributes of next sprite.
+     * @param {number} x - horizontal scale
+     * @param {number} y - vertical scale
+     */
+    function sscale(x: number, y: number): void;
+
+    /**
+     * Set the rotation attribute of next sprite.
+     * @param {number} a - angle in degrees
+     */
+    function srot(a: number): void;
+
+    /**
+     * Clear all attributes of next sprite.
+     */
+    function sclear(): void;
+
+    /**
+     * Draw next sprite.
+     *
+     * @param {number} x - x-coordinate
+     * @param {number} y - y-coordinate
+     */
+    function sdraw(x: number, y: number): void;
+
+    /**
+     * Draw a box using the tiles assigned with stile.
+     *
+     * This is not affected by:
+     * - the camera position
+     * - the sprite attributes
+     *
+     * This is affected by:
+     * - the tile attribute
+     *
+     * @param {number} x - top-left x-coordinate
+     * @param {number} y - top-left y-coordinate
+     * @param {number} w - width
+     * @param {number} h - height
+     */
+    function sbox(x: number, y: number, w: number, h: number): void;
+
+    //###########
+    // TEXT API
+    //###########
+
+    /**
+     * Get id of a font identified by a unique name.
+     * @param {string} name - font unique name
+     * @returns {number} font id
+     */
+    function fnt(name: string): number;
+
+    /**
+     * Set the align attribute of next text.
+     * @param {number} x - horizontal alignment
+     * @param {number} y - vertical alignment
+     */
+    function falign(x: number, y: number): void;
+
+    /**
+     * Set the color attribute of next text.
+     * @param {number} c - hexadecimal color
+     */
+    function fcolor(c: number): void;
+
+    /**
+     * Clear all attributes of next text.
+     */
+    function fclear(): void;
+
+    /**
+     * Draw next text.
+     * @param {number} id - font id
+     * @param {string} text - text to draw
+     * @param {number} x - x-coordinate
+     * @param {number} y - y-coordinate
+     */
+    function fdraw(id: number, text: string, x: number, y: number): void;
+
+    //###########
+    // MATH API
+    //###########
+
+    function abs(val: number): number;
+    function floor(val: number): number;
+    function ceil(val: number): number;
+    function sign(val: number): number;
+    function min(a: number, b: number): number;
+    function max(a: number, b: number): number;
+    function clamp(val: number, min: number, max: number): number;
+    function cos(val: number): number;
+    function sin(val: number): number;
+}
