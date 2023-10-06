@@ -1,7 +1,11 @@
-import * as Moroxel8AISDK from "moroxel8ai-sdk";
-import { IVM, GAME_FUNCTIONS } from "../_utils";
+import type { IAPI } from "../../api";
+import { GAME_FUNCTIONS } from "../_utils";
+import type { IGame } from "../_utils";
 
-class JSVM implements IVM {
+/**
+ * Game loaded from a JS script.
+ */
+class JSGame implements IGame {
     private _fun: Function;
     private _context: any;
 
@@ -42,13 +46,10 @@ class JSVM implements IVM {
 /**
  * Initialize a new JS VM for running a script.
  * @param {string} script - script to inject
- * @param {Moroxel8AISDK.IMoroxel8AI} api - interface for the CPU
+ * @param {IAPI} api - interface for the CPU
  * @returns {IVM} - new JS VM
  */
-export function initJS(
-    script: string | undefined,
-    api: Moroxel8AISDK.IMoroxel8AI
-): IVM {
+export function initJS(script: string | undefined, api: IAPI): JSGame {
     const context = {};
     const builtins: any = {
         // For exposing functions from game
@@ -110,5 +111,5 @@ export function initJS(
     );
 
     fun(...params.map((_) => builtins[_]));
-    return new JSVM(fun, context);
+    return new JSGame(fun, context);
 }

@@ -1,72 +1,99 @@
 import * as MoroboxAIGameSDK from "moroboxai-game-sdk";
-import * as Moroxel8AISDK from "moroxel8ai-sdk";
+import type { Inputs } from "moroboxai-game-sdk";
 import * as PixiMoroxel8AI from "piximoroxel8ai";
-import { IVM, initVM } from "./vm";
+import type { IAPI } from "./api";
+export type { IAPI } from "./api";
+import { initGame as initGameScript } from "./game";
+import type { IGame } from "./game";
 import { PPU, AssetHeader, FontHeader, TileMapHeader } from "./ppu";
-import type { IMain } from "./plugin";
-export * from "./plugin";
 
 export const VERSION = "__VERSION__";
 
-interface ExtendedGameHeader extends MoroboxAIGameSDK.GameHeader {
+/**
+ * Languages supported for the game.
+ */
+export type Language = "javascript" | "lua";
+
+/**
+ * Parameters passed to the entrypoint of the game.
+ *
+ * Those parameters are passed by PixiMoroxel8AI when booting the
+ * game specified in the header.
+ */
+export interface MainOptions {}
+
+/**
+ * Entrypoint of the game.
+ *
+ * Passing the entrypoint in code can be useful in development mode,
+ * where the default behavior of PixiMoroxel8AI, of making a big
+ * eval of the main file of the game, can cause issues with imports
+ * and exports.
+ */
+export interface MainFunction {
+    (options: MainOptions): Promise<IGame>;
+}
+
+/**
+ * Something that looks like an entrypoint.
+ */
+export type MainLike = string | MainFunction;
+
+/**
+ * Game header extended with settings for Moroxel8AI.
+ */
+export interface GameHeader extends MoroboxAIGameSDK.GameHeader {
     assets?: AssetHeader[];
-    main?: string;
-    language?: string;
-    script?: string | IMain;
+    language?: Language;
+    main?: MainLike;
 }
 
 interface GameScript {
-    language: "javascript" | "lua";
-    script: string | IMain;
+    language: Language;
+    script: MainLike;
 }
 
 /**
  * Load the main script indicated in game header.
- * @param {ExtendedGameHeader} header - game header
+ * @param {Moroxel8AI} vm - instance of Moroxel8AI
  * @param {MoroboxAIGameSDK.IGameServer} gameServer - game server for accessing files
  * @returns {Promise} - content of the main script
  */
-function loadMain(
-    header: ExtendedGameHeader,
+function loadGame(
+    vm: Moroxel8AI,
     gameServer: MoroboxAIGameSDK.IGameServer
-): Promise<GameScript> {
-    return new Promise<GameScript>((resolve, reject) => {
-        if (header.script !== undefined) {
-            if (typeof header.script === "function") {
-                return resolve({
-                    language: "javascript",
-                    script: header.script
-                });
-            }
-
-            if (header.language === undefined) {
-                return reject("header is missing language attribute");
-            }
-
-            if (header.language !== "javascript" && header.language !== "lua") {
-                return reject(
-                    `unknown script language ${header.language} in header`
-                );
-            }
-
-            return resolve({
-                language: header.language,
-                script: header.script
-            });
+): Promise<IGame | undefined> {
+    return new Promise<IGame | undefined>((resolve, reject) => {
+        // Override the main from header
+        if (vm.options.main !== undefined) {
+            vm.header.main = vm.options.main;
         }
 
-        if (header.main === undefined) {
+        const main = vm.header.main;
+        if (main === undefined) {
             return reject(
                 "header is missing main attribute with the path to your main script"
             );
         }
 
-        return gameServer.get(header.main).then((data) =>
-            resolve({
-                language: header.main!.endsWith(".js") ? "javascript" : "lua",
-                script: data
-            })
-        );
+        if (typeof main === "function") {
+            // User passed a function acting as the entrypoint of the game
+            return main({}).then((game) =>
+                resolve(initGameScript("javascript", game, vm))
+            );
+        }
+
+        return gameServer
+            .get(main)
+            .then((data) =>
+                resolve(
+                    initGameScript(
+                        main!.endsWith(".js") ? "javascript" : "lua",
+                        data,
+                        vm
+                    )
+                )
+            );
     });
 }
 
@@ -80,11 +107,11 @@ function loadMain(
  */
 function loadAssets(
     vm: Moroxel8AI,
-    assets: AssetHeader[] | undefined,
     gameServer: MoroboxAIGameSDK.IGameServer,
     assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void
 ): Promise<void> {
     return new Promise((resolve) => {
+        const assets = vm.header.assets;
         if (assets === undefined || assets.length === 0) {
             // no assets to load
             resolve();
@@ -139,32 +166,51 @@ function initGame(
     vm: Moroxel8AI,
     player: MoroboxAIGameSDK.IPlayer,
     assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void
-): Promise<GameScript> {
-    return new Promise<GameScript>((resolve) => {
-        const header = player.header as ExtendedGameHeader;
-
-        return loadMain(header, player.gameServer).then((data) => {
-            return loadAssets(
-                vm,
-                header.assets,
-                player.gameServer,
-                assetLoaded
-            ).then(() => resolve(data));
+): Promise<IGame | undefined> {
+    return new Promise<IGame | undefined>((resolve) => {
+        return loadAssets(vm, player.gameServer, assetLoaded).then(() => {
+            return loadGame(vm, player.gameServer).then((game) =>
+                resolve(game)
+            );
         });
     });
 }
 
-class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
+/**
+ * Possible modes for running PixiMoroxel8AI.
+ */
+export type Mode = "development" | "production";
+
+/**
+ * Options for Moroxel8AI.
+ */
+export interface Moroxel8AIOptions {
+    // Mode
+    mode?: Mode;
+    // Override the main defined in header
+    main?: MainLike;
+}
+
+export interface IMoroxel8AI
+    extends PixiMoroxel8AI.IGame,
+        MoroboxAIGameSDK.IBootable {}
+
+class Moroxel8AI implements IMoroxel8AI, IAPI {
+    readonly options: Moroxel8AIOptions;
     // Instance of PixiMoroxel8AI
-    private _pixiMoroxel8AI?: PixiMoroxel8AI.IPixiMoroxel8AI;
-    // Instance of VM running the game script
-    private _vm?: IVM;
+    private _pixiMoroxel8AI?: PixiMoroxel8AI.IVM;
+    // Instance of game
+    private _game?: IGame;
     // If the game has been attached and is playing
     private _ppu!: PPU;
     // Last received inputs
-    private _inputs?: MoroboxAIGameSDK.IInputs[];
+    private _inputs?: Inputs[];
 
-    get pixiMoroxel8AI(): PixiMoroxel8AI.IPixiMoroxel8AI {
+    constructor(options?: Moroxel8AIOptions) {
+        this.options = options ?? {};
+    }
+
+    get pixiMoroxel8AI(): PixiMoroxel8AI.IVM {
         return this._pixiMoroxel8AI!;
     }
 
@@ -176,6 +222,10 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
         return this._pixiMoroxel8AI!.player;
     }
 
+    get header(): GameHeader {
+        return this._pixiMoroxel8AI?.header as GameHeader;
+    }
+
     _handleAssetLoaded(asset: AssetHeader, res: PIXI.LoaderResource) {
         if (res.extension === "fnt") {
             this._ppu.addFont(asset as FontHeader);
@@ -184,35 +234,58 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
         }
     }
 
-    // IGame interface
-    init(pixiMoroxel8AI: PixiMoroxel8AI.IPixiMoroxel8AI): void {
-        this._pixiMoroxel8AI = pixiMoroxel8AI;
-        pixiMoroxel8AI.autoClearBackBuffer = false;
-        this._ppu = new PPU(
-            pixiMoroxel8AI.PIXI,
-            pixiMoroxel8AI.renderer,
-            pixiMoroxel8AI.backBuffer,
-            pixiMoroxel8AI.SWIDTH,
-            pixiMoroxel8AI.SHEIGHT
-        );
-    }
+    /**
+     * Boot function called by MoroxoAIPlayer.
+     */
+    boot: MoroboxAIGameSDK.BootFunction = (
+        options: MoroboxAIGameSDK.BootOptions
+    ): Promise<MoroboxAIGameSDK.IGame> => {
+        return new Promise<MoroboxAIGameSDK.IGame>((resolve) => {
+            // Initialize PixiMoroxel8AI with Moroxel8AI as the game
+            const pixiMoroxel8AI = PixiMoroxel8AI.init({
+                main: async (
+                    mainOptions: PixiMoroxel8AI.MainOptions
+                ): Promise<PixiMoroxel8AI.IGame> => {
+                    // Get the instance of PixiMoroxel8AI
+                    this._pixiMoroxel8AI = mainOptions.vm;
+                    this._pixiMoroxel8AI.autoClearBackBuffer = false;
+                    this._ppu = new PPU(
+                        this._pixiMoroxel8AI.PIXI,
+                        this._pixiMoroxel8AI.renderer,
+                        this._pixiMoroxel8AI.backBuffer,
+                        this._pixiMoroxel8AI.SWIDTH,
+                        this._pixiMoroxel8AI.SHEIGHT
+                    );
+
+                    if (this.options.mode === "development") {
+                        console.log("hook Moroxel8AI API");
+                        this.hookAPI(window);
+                    }
+
+                    return new Promise<PixiMoroxel8AI.IGame>((resolve) =>
+                        // Moroxel8AI already exists, so return this
+                        resolve(this)
+                    );
+                }
+            });
+
+            // Make PixiMoroxel8AI boot
+            return pixiMoroxel8AI.boot(options).then((game) =>
+                // Here game is the instance of PixiMoroxel8AI
+                resolve(game)
+            );
+        });
+    };
 
     load(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             // init the game and load assets
             initGame(this, this.player, (asset, res) =>
                 this._handleAssetLoaded(asset, res)
-            ).then((data) => {
-                // initialize the VM for game script
-                if (typeof data.script === "function") {
-                    return data.script(this).then((vm) => {
-                        this._vm = vm;
-                        return resolve();
-                    });
-                } else {
-                    this._vm = initVM(data.language, data.script, this);
-                }
-                if (this._vm === undefined) {
+            ).then((game) => {
+                this._game = game;
+
+                if (this._game === undefined) {
                     console.error(
                         "failed to create the VM, see errors in console"
                     );
@@ -224,40 +297,36 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 
     saveState(): object {
-        if (this._vm?.saveState !== undefined) {
-            return this._vm.saveState();
+        if (this._game?.saveState !== undefined) {
+            return this._game.saveState();
         }
 
         return {};
     }
 
     loadState(state: object): void {
-        if (this._vm?.loadState !== undefined) {
-            this._vm.loadState(state);
+        if (this._game?.loadState !== undefined) {
+            this._game.loadState(state);
         }
     }
 
     getStateForAgent(): object {
-        if (this._vm?.getStateForAgent !== undefined) {
-            return this._vm.getStateForAgent();
+        if (this._game?.getStateForAgent !== undefined) {
+            return this._game.getStateForAgent();
         }
 
         return {};
     }
 
-    tick(
-        inputs: MoroboxAIGameSDK.IInputs[],
-        delta: number,
-        render: boolean
-    ): void {
-        if (this._vm?.tick === undefined) {
+    tick(inputs: Inputs[], delta: number, render: boolean): void {
+        if (this._game?.tick === undefined) {
             return;
         }
 
         this._ppu.drawEnabled = render;
         this._ppu.preRender();
         this._inputs = inputs;
-        this._vm.tick(delta);
+        this._game.tick(delta);
         this._ppu.postRender();
     }
 
@@ -455,10 +524,36 @@ class Moroxel8AI implements PixiMoroxel8AI.IGame, Moroxel8AISDK.IMoroxel8AI {
     }
 }
 
-export const boot: MoroboxAIGameSDK.IBoot = (
-    player: MoroboxAIGameSDK.IPlayer
-) => {
-    return PixiMoroxel8AI.init({ player, game: new Moroxel8AI() });
+/**
+ * Initialize a new Moroxel8AI instance.
+ *
+ * This function is not called by MoroboxAIPlayer and is only meant
+ * for libraries embedding Moroxel8AI in the browser.
+ *
+ * This creates and initializes a new Moroxel8AI instance, without
+ * loading the game yet.
+ * @param {Moroxel8AIOptions} options - options for Moroxel8AI
+ * @returns the new instance
+ */
+export function init(options?: Moroxel8AIOptions): IMoroxel8AI {
+    return new Moroxel8AI(options);
+}
+
+/**
+ * Boot function called by MoroboxAIPlayer.
+ */
+export const boot: MoroboxAIGameSDK.BootFunction = (
+    options: MoroboxAIGameSDK.BootOptions
+): Promise<MoroboxAIGameSDK.IGame> => {
+    return new Promise<MoroboxAIGameSDK.IGame>((resolve) => {
+        // Create Moroxel8AI
+        const vm = new Moroxel8AI();
+        // Boot the game
+        return vm.boot(options).then((game) => {
+            // Return to the player
+            return resolve(game);
+        });
+    });
 };
 
 /**

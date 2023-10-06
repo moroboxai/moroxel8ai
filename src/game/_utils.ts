@@ -1,4 +1,7 @@
-export interface IVM {
+/**
+ * Functions to implement to be compatible with Moroxel8AI.
+ */
+export interface IGame {
     // Save the state of the game
     saveState(): object;
     // Load the state of the game

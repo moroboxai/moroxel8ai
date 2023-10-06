@@ -9,10 +9,14 @@ import {
     nargs,
     func
 } from "moroboxai-lua";
-import { IVM } from "../_utils";
+import type { IAPI } from "../../api";
+import type { IGame } from "../_utils";
 import { lua_State, lua, to_luastring } from "fengari-web";
 
-class LuaVM implements IVM {
+/**
+ * Game loaded from a Lua script.
+ */
+class LuaGame implements IGame {
     private _instance: MoroboxAILua.IVM;
 
     get luaState(): lua_State {
@@ -74,13 +78,13 @@ class LuaVM implements IVM {
 /**
  * Initialize a new Lua VM for running a script.
  * @param {string} script - script to inject
- * @param {Moroxel8AISDK.IMoroxel8AI} api - interface for the CPU
+ * @param {IAPI} api - interface for the CPU
  * @returns {any} - new Lua VM
  */
 export function initLua(
     script: string | undefined,
-    api: Moroxel8AISDK.IMoroxel8AI
-): IVM | undefined {
+    api: IAPI
+): IGame | undefined {
     const instance = MoroboxAILua.initLua({
         globals: {
             SWIDTH: api.SWIDTH,
@@ -291,5 +295,5 @@ export function initLua(
         script
     });
 
-    return instance !== undefined ? new LuaVM(instance) : undefined;
+    return instance !== undefined ? new LuaGame(instance) : undefined;
 }
