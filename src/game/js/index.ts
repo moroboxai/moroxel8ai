@@ -50,10 +50,7 @@ class JSGame implements IGame {
  * @returns {IVM} - new JS VM
  */
 export function initJS(script: string | undefined, api: IAPI): JSGame {
-    const context = {};
     const builtins: any = {
-        // For exposing functions from game
-        exports: context,
         // Builtin constants and functions
         SWIDTH: api.SWIDTH,
         SHEIGHT: api.SHEIGHT,
@@ -101,8 +98,13 @@ export function initJS(script: string | undefined, api: IAPI): JSGame {
         sin: api.sin.bind(api)
     };
 
+    const exports: any = {};
+    const module = { exports: { boot: undefined } };
     const params = Object.keys(builtins);
     const fun = new Function(
+        "exports",
+        "module",
+        "define",
         ...params,
         `${script}\n; ${GAME_FUNCTIONS.map(
             (name) =>
@@ -110,6 +112,7 @@ export function initJS(script: string | undefined, api: IAPI): JSGame {
         ).join(";")}`
     );
 
-    fun(...params.map((_) => builtins[_]));
-    return new JSGame(fun, context);
+    fun(exports, module, undefined, ...params.map((_) => builtins[_]));
+
+    return new JSGame(fun, exports);
 }

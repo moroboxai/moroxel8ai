@@ -1,5 +1,5 @@
 import * as MoroboxAIGameSDK from "moroboxai-game-sdk";
-import type { Inputs } from "moroboxai-game-sdk";
+import type { Controller } from "moroboxai-game-sdk";
 import * as PixiMoroxel8AI from "piximoroxel8ai";
 import type { IAPI } from "./api";
 export type { IAPI } from "./api";
@@ -62,8 +62,8 @@ interface GameScript {
 function loadGame(
     vm: Moroxel8AI,
     gameServer: MoroboxAIGameSDK.IGameServer
-): Promise<IGame | undefined> {
-    return new Promise<IGame | undefined>((resolve, reject) => {
+): Promise<IGame> {
+    return new Promise<IGame>(async (resolve) => {
         // Override the main from header
         if (vm.options.main !== undefined) {
             vm.header.main = vm.options.main;
@@ -71,47 +71,44 @@ function loadGame(
 
         const main = vm.header.main;
         if (main === undefined) {
-            return reject(
-                "header is missing main attribute with the path to your main script"
-            );
+            throw "header is missing main attribute with the path to your main script";
         }
 
         if (typeof main === "function") {
             // User passed a function acting as the entrypoint of the game
-            return main({}).then((game) =>
-                resolve(initGameScript("javascript", game, vm))
-            );
+            const game = await main({});
+            return resolve(game);
         }
 
-        return gameServer
-            .get(main)
-            .then((data) =>
-                resolve(
-                    initGameScript(
-                        main!.endsWith(".js") ? "javascript" : "lua",
-                        data,
-                        vm
-                    )
-                )
-            );
+        const script = await gameServer.get(main);
+        const game = initGameScript(
+            main!.endsWith(".js") ? "javascript" : "lua",
+            script,
+            vm
+        );
+        if (game === undefined) {
+            throw "invalid game script";
+        }
+
+        return resolve(game);
     });
 }
 
 /**
  * Load a list of assets from the game server.
- * @param {Moroxel8AI} vm - vm instance
+ * @param {Moroxel8AI} moroxel8AI - instance of Moroxel8AI
  * @param {AssetHeader[]} assets - list of assets to load
  * @param {MoroboxAIGameSDK.IGameServer} gameServer - game server for accessing files
  * @param {function} assetLoaded - function called for each loaded asset
  * @returns {Promise} - a promise
  */
 function loadAssets(
-    vm: Moroxel8AI,
+    moroxel8AI: Moroxel8AI,
     gameServer: MoroboxAIGameSDK.IGameServer,
     assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void
 ): Promise<void> {
     return new Promise((resolve) => {
-        const assets = vm.header.assets;
+        const assets = moroxel8AI.header.assets;
         if (assets === undefined || assets.length === 0) {
             // no assets to load
             resolve();
@@ -119,7 +116,7 @@ function loadAssets(
         }
 
         console.log("loading assets...");
-        const loader = new vm.PIXI.Loader();
+        const loader = new moroxel8AI.PIXI.Loader();
 
         // add each asset to the loader
         const validAssets = new Array<AssetHeader>();
@@ -157,22 +154,21 @@ function loadAssets(
 
 /**
  * Load and initialize the game.
- * @param {Moroxel8AI} vm - vm instance
- * @param {MoroboxAIGameSDK.IPlayer} player - player instance
+ * @param {Moroxel8AI} moroxel8AI - instance of Moroxel8AI
+ * @param {MoroboxAIGameSDK.IGameServer} gameServer - game server
  * @param {Function} assetLoaded - function called for each loaded asset
  * @returns {Promise} - content of the main script
  */
 function initGame(
-    vm: Moroxel8AI,
-    player: MoroboxAIGameSDK.IPlayer,
+    moroxel8AI: Moroxel8AI,
+    gameServer: MoroboxAIGameSDK.IGameServer,
     assetLoaded: (asset: AssetHeader, res: PIXI.LoaderResource) => void
-): Promise<IGame | undefined> {
-    return new Promise<IGame | undefined>((resolve) => {
-        return loadAssets(vm, player.gameServer, assetLoaded).then(() => {
-            return loadGame(vm, player.gameServer).then((game) =>
-                resolve(game)
-            );
-        });
+): Promise<IGame> {
+    return new Promise<IGame>(async (resolve) => {
+        await loadAssets(moroxel8AI, gameServer, assetLoaded);
+        const game = await loadGame(moroxel8AI, gameServer);
+        console.log("game loaded", game);
+        return resolve(game);
     });
 }
 
@@ -198,32 +194,26 @@ export interface IMoroxel8AI
 class Moroxel8AI implements IMoroxel8AI, IAPI {
     readonly options: Moroxel8AIOptions;
     // Instance of PixiMoroxel8AI
-    private _pixiMoroxel8AI?: PixiMoroxel8AI.IVM;
+    private _vm!: PixiMoroxel8AI.IVM;
+    // Game header
+    private _header!: GameHeader;
     // Instance of game
-    private _game?: IGame;
+    private _game!: IGame;
     // If the game has been attached and is playing
     private _ppu!: PPU;
     // Last received inputs
-    private _inputs?: Inputs[];
+    private _controllers!: Controller[];
 
     constructor(options?: Moroxel8AIOptions) {
         this.options = options ?? {};
     }
 
-    get pixiMoroxel8AI(): PixiMoroxel8AI.IVM {
-        return this._pixiMoroxel8AI!;
-    }
-
     get PIXI(): typeof PIXI {
-        return this._pixiMoroxel8AI!.PIXI;
-    }
-
-    get player(): MoroboxAIGameSDK.IPlayer {
-        return this._pixiMoroxel8AI!.player;
+        return this._vm.PIXI;
     }
 
     get header(): GameHeader {
-        return this._pixiMoroxel8AI?.header as GameHeader;
+        return this._header;
     }
 
     _handleAssetLoaded(asset: AssetHeader, res: PIXI.LoaderResource) {
@@ -240,21 +230,24 @@ class Moroxel8AI implements IMoroxel8AI, IAPI {
     boot: MoroboxAIGameSDK.BootFunction = (
         options: MoroboxAIGameSDK.BootOptions
     ): Promise<MoroboxAIGameSDK.IGame> => {
-        return new Promise<MoroboxAIGameSDK.IGame>((resolve) => {
+        return new Promise<MoroboxAIGameSDK.IGame>(async (resolve) => {
+            // Copy the header
+            this._header = options.vm.header as GameHeader;
+
             // Initialize PixiMoroxel8AI with Moroxel8AI as the game
             const pixiMoroxel8AI = PixiMoroxel8AI.init({
-                main: async (
+                main: (
                     mainOptions: PixiMoroxel8AI.MainOptions
                 ): Promise<PixiMoroxel8AI.IGame> => {
                     // Get the instance of PixiMoroxel8AI
-                    this._pixiMoroxel8AI = mainOptions.vm;
-                    this._pixiMoroxel8AI.autoClearBackBuffer = false;
+                    this._vm = mainOptions.vm;
+                    this._vm.autoClearBackBuffer = false;
                     this._ppu = new PPU(
-                        this._pixiMoroxel8AI.PIXI,
-                        this._pixiMoroxel8AI.renderer,
-                        this._pixiMoroxel8AI.backBuffer,
-                        this._pixiMoroxel8AI.SWIDTH,
-                        this._pixiMoroxel8AI.SHEIGHT
+                        this._vm.PIXI,
+                        this._vm.renderer,
+                        this._vm.backBuffer,
+                        this._vm.width,
+                        this._vm.height
                     );
 
                     if (this.options.mode === "development") {
@@ -270,29 +263,21 @@ class Moroxel8AI implements IMoroxel8AI, IAPI {
             });
 
             // Make PixiMoroxel8AI boot
-            return pixiMoroxel8AI.boot(options).then((game) =>
-                // Here game is the instance of PixiMoroxel8AI
-                resolve(game)
-            );
+            const game = await pixiMoroxel8AI.boot(options);
+
+            return resolve(game);
         });
     };
 
     load(): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>(async (resolve) => {
             // init the game and load assets
-            initGame(this, this.player, (asset, res) =>
-                this._handleAssetLoaded(asset, res)
-            ).then((game) => {
-                this._game = game;
-
-                if (this._game === undefined) {
-                    console.error(
-                        "failed to create the VM, see errors in console"
-                    );
-                    return reject();
-                }
-                return resolve();
-            });
+            this._game = await initGame(
+                this,
+                this._vm.gameServer,
+                (asset, res) => this._handleAssetLoaded(asset, res)
+            );
+            return resolve();
         });
     }
 
@@ -318,14 +303,14 @@ class Moroxel8AI implements IMoroxel8AI, IAPI {
         return {};
     }
 
-    tick(inputs: Inputs[], delta: number, render: boolean): void {
+    tick(controllers: Controller[], delta: number, render: boolean): void {
         if (this._game?.tick === undefined) {
             return;
         }
 
         this._ppu.drawEnabled = render;
         this._ppu.preRender();
-        this._inputs = inputs;
+        this._controllers = controllers;
         this._game.tick(delta);
         this._ppu.postRender();
     }
@@ -367,10 +352,22 @@ class Moroxel8AI implements IMoroxel8AI, IAPI {
     state(pid: number, val: any): void;
     state(pid: any | number, val?: any): void {}
 
+    getController(pid: number): Controller | undefined {
+        if (
+            this._controllers === undefined ||
+            this._controllers.length <= pid
+        ) {
+            return undefined;
+        }
+
+        return this._controllers[pid];
+    }
+
     btn(bid: number): boolean;
     btn(pid: number, bid: number): boolean;
     btn(pid: number, bid?: number): boolean {
-        if (this._inputs === undefined) {
+        const controller = this.getController(pid);
+        if (controller === undefined) {
             return false;
         }
 
@@ -379,31 +376,28 @@ class Moroxel8AI implements IMoroxel8AI, IAPI {
             pid = this.P1;
         }
 
-        if (this._inputs.length <= pid) {
-            return false;
-        }
-
+        const inputs = controller.inputs;
         switch (bid) {
             case this.BLEFT:
-                return this._inputs[pid].left === true;
+                return inputs.left === true;
             case this.BRIGHT:
-                return this._inputs[pid].right === true;
+                return inputs.right === true;
             case this.BUP:
-                return this._inputs[pid].up === true;
+                return inputs.up === true;
             case this.BDOWN:
-                return this._inputs[pid].down === true;
+                return inputs.down === true;
             default:
                 return false;
         }
     }
 
     pbound(pid: number): boolean {
-        const player = this.player.getController(pid);
+        const player = this.getController(pid);
         return player === undefined ? false : player.isBound;
     }
 
     plabel(pid: number): string {
-        const player = this.player.getController(pid);
+        const player = this.getController(pid);
         return player === undefined ? "" : player.label;
     }
 
