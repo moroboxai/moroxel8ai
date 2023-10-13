@@ -1,5 +1,4 @@
-import type { IMoroxel8AI } from "moroxel8ai-sdk";
-import type { IAPI } from "../api";
+import type { IAPI } from "@/api";
 import { initJS } from "./js";
 import { initLua } from "./lua";
 import type { IGame } from "./_utils";

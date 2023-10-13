@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import * as constants from "../constants";
+import * as constants from "@/constants";
 import { AssetHeader, TileMapHeader } from "./header";
 import { IndexedTexture } from "./palette";
 

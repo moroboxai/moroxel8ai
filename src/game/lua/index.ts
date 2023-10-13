@@ -1,4 +1,3 @@
-import * as Moroxel8AISDK from "moroxel8ai-sdk";
 import * as MoroboxAILua from "moroboxai-lua";
 import {
     getnumber,
@@ -9,8 +8,8 @@ import {
     nargs,
     func
 } from "moroboxai-lua";
-import type { IAPI } from "../../api";
-import type { IGame } from "../_utils";
+import type { IAPI } from "@/api";
+import type { IGame } from "@/game/_utils";
 import { lua_State, lua, to_luastring } from "fengari-web";
 
 /**

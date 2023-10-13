@@ -1,10 +1,9 @@
 import * as PIXI from "pixi.js";
-import * as constants from "../constants";
+import * as constants from "@/constants";
 import { FontHeader, TileMapHeader } from "./header";
 import { TileMap } from "./tilemap";
 import { PaletteColorFilter, Palette, palettize } from "./palette";
 import { NineSliceTexture, NineSliceSprite } from "./nineslice";
-import { RetroColorFilter } from "./retrocolor";
 export * from "./header";
 
 function clamp(v: number, a: number, b: number): number {

@@ -1,6 +1,6 @@
-import type { IAPI } from "../../api";
-import { GAME_FUNCTIONS } from "../_utils";
-import type { IGame } from "../_utils";
+import type { IAPI } from "@/api";
+import { GAME_FUNCTIONS } from "@/game/_utils";
+import type { IGame } from "@/game/_utils";
 
 /**
  * Game loaded from a JS script.
