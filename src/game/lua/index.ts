@@ -1,3 +1,4 @@
+import type { GameSaveState } from "moroboxai-game-sdk";
 import * as MoroboxAILua from "moroboxai-lua";
 import {
     getnumber,
@@ -26,7 +27,7 @@ class LuaGame implements IGame {
         this._instance = instance;
     }
 
-    saveState(): object {
+    saveState(): GameSaveState {
         lua.lua_getglobal(this.luaState, to_luastring("saveState", true));
         if (lua.lua_call(this.luaState, 1, 0) !== lua.LUA_OK) {
             const err = getstring(this.luaState, -1);
@@ -37,7 +38,7 @@ class LuaGame implements IGame {
         return getobject(this.luaState, -1);
     }
 
-    loadState(state: object): void {
+    loadState(state: GameSaveState): void {
         lua.lua_getglobal(this.luaState, to_luastring("loadState", true));
         push(this.luaState, state);
         if (lua.lua_call(this.luaState, 1, 0) !== lua.LUA_OK) {

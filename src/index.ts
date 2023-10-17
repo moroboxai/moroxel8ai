@@ -281,15 +281,15 @@ class Moroxel8AI implements IMoroxel8AI, IAPI {
         });
     }
 
-    saveState(): object {
+    saveState(): MoroboxAIGameSDK.GameSaveState {
         if (this._game?.saveState !== undefined) {
             return this._game.saveState();
         }
 
-        return {};
+        return { isGameOver: false };
     }
 
-    loadState(state: object): void {
+    loadState(state?: MoroboxAIGameSDK.GameSaveState): void {
         if (this._game?.loadState !== undefined) {
             this._game.loadState(state);
         }

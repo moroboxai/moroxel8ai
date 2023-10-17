@@ -1,11 +1,13 @@
+import type { GameSaveState } from "moroboxai-game-sdk";
+
 /**
  * Functions to implement to be compatible with Moroxel8AI.
  */
 export interface IGame {
     // Save the state of the game
-    saveState(): object;
+    saveState(): GameSaveState;
     // Load the state of the game
-    loadState(state: object): void;
+    loadState(state?: GameSaveState): void;
     // Get the game state for an agent
     getStateForAgent(): object;
     // Tick the game

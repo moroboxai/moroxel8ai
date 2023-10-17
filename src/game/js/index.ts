@@ -1,3 +1,4 @@
+import type { GameSaveState } from "moroboxai-game-sdk";
 import type { IAPI } from "@/api";
 import { GAME_FUNCTIONS } from "@/game/_utils";
 import type { IGame } from "@/game/_utils";
@@ -14,15 +15,15 @@ class JSGame implements IGame {
         this._context = context;
     }
 
-    saveState(): object {
+    saveState(): GameSaveState {
         if (this._context.saveState !== undefined) {
             return this._context.saveState();
         }
 
-        return {};
+        return { isGameOver: false };
     }
 
-    loadState(state: object): void {
+    loadState(state: GameSaveState): void {
         if (this._context.loadState !== undefined) {
             this._context.loadState(state);
         }
